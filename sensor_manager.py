@@ -37,7 +37,7 @@ class Sensor_Manager():
     def list_devices(self):
         # For ever sensor_client in the sensor list, we will print it's information
         for position, device in enumerate(self.sensor_list):
-            print ('{} - Sensor Address: {}, Connected: {}, Hv Value: {}, Hv Hex: {}, Reading: {}'.format(position + 1,
+            print ('{} - Sensor Address: {}, Connected: {}, Hv Value: {}, Hv Hex: {}, Read: {}'.format(position + 1,
                                                                                device.address,
                                                                                device.connected,
                                                                                device.hv,

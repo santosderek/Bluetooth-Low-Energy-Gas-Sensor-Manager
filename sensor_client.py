@@ -60,9 +60,9 @@ class Sensor_Client():
             self.hv = 0x60
 
             # Attempt connection to sensor
-            self.connect()
-            if self.connected:
-                self.change_hv_value(self.hv)
+            #self.connect()
+            #if self.connected:
+            #    self.change_hv_value(self.hv)
             
         except Exception as e:
             raise e
@@ -71,30 +71,33 @@ class Sensor_Client():
         # Since under __init__ has already spanwed the startup command
         # we can free-ly send the connect command to try to start a connection
         self.gtool.sendline('connect')
+        self.connected = False
 
         try:
-            # This line will jump one line down
-            #index = self.gtool.expect('\n')
-            
             # If connection was successful we would get 'Connection successful' as output
             # If connection was unsuccessful we would try again. 
             index = self.gtool.expect(['Connection successful',
                                        'Error: connect: Device or resource busy.*',
-                                       '.*Too many levels of symbolic links.*'])
+                                       '.*Too many levels of symbolic links.*',
+                                       '.*Connection refused.*'])
             if index == 0:
                 self.connected = True
             elif index == 1:
-                self.connect()
+                self.connect() 
             elif index == 2:
                 print ('Too many levels of symbolic links. Please restart device.')
+            elif index == 3:
+                print ('Connection refused. Try again')
             
-        except pexpect.exceptions.TIMEOUT as timeout:
-            print ('Request Timed out. Please try again.')           
+        except pexpect.exceptions.TIMEOUT as timeout:           
             self.connected = False
+            self.reading_channels = False
+            self.connect()
 
         except Exception as e:
             print ('ERROR:', e)
             self.connected = False
+            self.reading_channels = False 
             
 
     def change_hv_value(self, value):
@@ -148,6 +151,7 @@ class Sensor_Client():
                         with open('{0} - osc_drift_ch_{1:02d}.csv'.format(self.address, channel), 'a') as current_file:
                             data = '{0:5.1f},{1:1.8f}\n'.format(time() - self.start_time, float (frequency))
                             current_file.write(data)
+                    
             except Exception as e:
                 print (e) 
 
