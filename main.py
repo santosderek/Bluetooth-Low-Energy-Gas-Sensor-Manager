@@ -92,8 +92,9 @@ def main():
                 main_loop_running = False 
             
         except Exception as e:
-            #print('ERROR:',e)
-            raise e
+            print('ERROR:',e)
+            #raise e
+        
 
 if __name__ == '__main__':
     main()

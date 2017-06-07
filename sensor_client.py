@@ -15,7 +15,7 @@ import pexpect
 import sys
 import struct
 import binascii
-from time import sleep, time 
+from time import sleep, time, ctime 
 
 
 class Sensor_Client(): 
@@ -26,13 +26,15 @@ class Sensor_Client():
             # Pexpect sometimes sends with bytes using normal spawn()
             self.address = ADDRESS
             
-            self.gtool = pexpect.spawnu('sudo gatttool -i hci0 -b {addr} -t random -I'.format(addr = self.address))     
+            self.gtool = pexpect.spawnu('sudo gatttool -i hci0 -b {addr} -t random -I'.format(addr = self.address), timeout = 3)     
             
             # PExpect logs will now output onto the screen
-            #self.gtool.logfile = sys.stdout
+            self.gtool.logfile = sys.stdout
 
             # Variable to check if we are connected to sensor
             self.connected = False
+
+            self.attempting_to_connect = False
 
             # Variable to check if we are currently reading from sensor
             self.reading_channels = False
@@ -70,34 +72,47 @@ class Sensor_Client():
     def connect(self):
         # Since under __init__ has already spanwed the startup command
         # we can free-ly send the connect command to try to start a connection
+
+        if self.connected == True:
+            return
+        
         self.gtool.sendline('connect')
         self.connected = False
 
         try:
+            self.attempting_to_connect = True
             # If connection was successful we would get 'Connection successful' as output
             # If connection was unsuccessful we would try again. 
             index = self.gtool.expect(['Connection successful',
-                                       'Error: connect: Device or resource busy.*',
+                                       '.*busy.*',
                                        '.*Too many levels of symbolic links.*',
                                        '.*Connection refused.*'])
             if index == 0:
                 self.connected = True
+                self.change_hv_value(self.hv) 
+                self.attempting_to_connect = False
+                
             elif index == 1:
                 self.connect() 
             elif index == 2:
                 print ('Too many levels of symbolic links. Please restart device.')
+                self.set_to_disconnected() 
             elif index == 3:
+                self.set_to_disconnected() 
                 print ('Connection refused. Try again')
             
         except pexpect.exceptions.TIMEOUT as timeout:           
-            self.connected = False
-            self.reading_channels = False
+            self.set_to_disconnected()
             self.connect()
 
         except Exception as e:
             print ('ERROR:', e)
-            self.connected = False
-            self.reading_channels = False 
+            self.set_to_disconnected() 
+
+    def set_to_disconnected(self):
+        self.connected = False
+        self.reading_channels = False
+        self.attempting_to_connect = False
             
 
     def change_hv_value(self, value):
@@ -112,19 +127,20 @@ class Sensor_Client():
         self.reading_channels = old_state
 
     def request_frequency(self):
-        # We must record the starting time that the sensor is being started
         
-        self.start_time = time()
 
         # While the sensor is being used
         while not self.is_stopped:
             try:
-                if (self.reading_channels and self.connected):
+                if self.reading_channels and self.connected:
+                    # We must record the starting time that the sensor is being started
+                    if self.start_time is None:
+                        self.start_time = time()
                     # For each channel being passed into the class
                     for channel in self.channels:
                         # Ready the sensor for being used
-                        self.gtool.sendline(self.char_write(0x04, 0x80 + 0x00, channel + 0x80 + 0x0a))
-                        self.gtool.sendline(self.char_write(0x04, 0x80 + 0x00, channel + 0x80 + 0x0b))
+                        self.gtool.sendline(self.char_write(0x04, 0x80, channel + 0x80 + 0x0a))
+                        self.gtool.sendline(self.char_write(0x04, 0x80, channel + 0x80 + 0x0b))
 
                         # Send the sensor the gate time desired
                         self.gtool.sendline(self.gate_time_write(0x05, self.gate_time))
@@ -148,9 +164,14 @@ class Sensor_Client():
                         frequency = float(count) / float(2) / (self.gate_time / 1000.0) / 1000000.0
 
                         # Append this value and the current time duration to a file
-                        with open('{0} - osc_drift_ch_{1:02d}.csv'.format(self.address, channel), 'a') as current_file:
+                        # The file name contains the MAC Address, Date/time, and channel
+                        with open('{0} - {1} - {2:02d}.csv'.format(self.address, ctime(self.start_time), channel), 'a') as current_file:
                             data = '{0:5.1f},{1:1.8f}\n'.format(time() - self.start_time, float (frequency))
                             current_file.write(data)
+    
+                elif (not self.attempting_to_connect) and (self.connected):
+                    # To check if we are still connected we can read from the sensor
+                    self.check_connection() 
                     
             except Exception as e:
                 print (e) 
@@ -177,21 +198,41 @@ class Sensor_Client():
     def read_handle(self):
         try: 
             self.gtool.sendline('char-read-hnd 0x0011')
-            value = self.gtool.expect(['descriptor: .*', '.*Disconnected.*'])
+            value = self.gtool.expect(['descriptor: .*', '.*Disconnected.*','\'NoneType\' object is not subscriptable'])
 
             # Simple recusion just incase sensor disconnect
             # if returned value == 'descriptor .*' then return result
             # else it's disconnected; reconnect and try again
             if value == 0:
-                return self.gtool.after
-            elif value == 1:
+                if not self.gtool.after == '\'NoneType\' object is not subscriptable':
+                    return self.gtool.after
+            elif value == 1: 
                 self.connect()
                 self.read_handle()
+            elif value == 2:
+                pass 
 
-        except pexpect.exceptions.TIMEOUT:
-            print ('Reading timed out.')
+        except pexpect.exceptions.TIMEOUT as t:
+            pass
+            
         except Exception as e:
             print ('ERROR:', e)
+
+    # Checking connection by reading to the sensor
+    # If descriptor is not sent back then assume disconnected 
+    def check_connection(self):
+        try: 
+            self.gtool.sendline('char-read-hnd 0x0011')
+            value = self.gtool.expect(['descriptor: .*', '.*Disconnected.*'])
+
+            if value == 0:
+                return
+            elif value == 1:
+                self.connected = False
+                self.reading_channels = False
+        except Exception as e:
+            self.connected = False
+            self.reading_channels = False 
             
     def disconnect(self):
         self.is_stopped = True
