@@ -29,7 +29,7 @@ class Sensor_Client():
             self.gtool = pexpect.spawnu('sudo gatttool -i hci0 -b {addr} -t random -I'.format(addr = self.address), timeout = 3)     
             
             # PExpect logs will now output onto the screen
-            self.gtool.logfile = sys.stdout
+            #self.gtool.logfile = sys.stdout
 
             # Variable to check if we are connected to sensor
             self.connected = False
@@ -59,7 +59,7 @@ class Sensor_Client():
             self.gate_time_delay = self.time_per_bit * 4 * 8.0 * (1/1000000.0)
 
             # Default HV value being used at the start of recording data
-            self.hv = 0x60
+            self.hv = 0x50
 
             # Attempt connection to sensor
             #self.connect()
@@ -72,8 +72,8 @@ class Sensor_Client():
     def connect(self):
         # Since under __init__ has already spanwed the startup command
         # we can free-ly send the connect command to try to start a connection
-
-        if self.connected == True:
+        self.check_connection()
+        if self.connected:
             return
         
         self.gtool.sendline('connect')
@@ -89,10 +89,11 @@ class Sensor_Client():
                                        '.*Connection refused.*'])
             if index == 0:
                 self.connected = True
-                self.change_hv_value(self.hv) 
+                #self.change_hv_value(self.hv) 
                 self.attempting_to_connect = False
                 
             elif index == 1:
+                print ('Device busy. Trying again') 
                 self.connect() 
             elif index == 2:
                 print ('Too many levels of symbolic links. Please restart device.')
@@ -117,14 +118,25 @@ class Sensor_Client():
 
     def change_hv_value(self, value):
         self.hv = value
-        old_state = self.reading_channels 
+        
+        if not self.connected:
+            print ('Not connected')
+            return
+        # old reading channels value 
+        old_rc_value = self.reading_channels
         self.reading_channels = False
+        self.attempting_to_connect = True
         
         sleep (3)
+        #print (self.char_write(0x02, 0x00, self.hv)    )
         self.gtool.sendline(self.char_write(0x02, 0x00, self.hv))
-        sleep(2)
-        
-        self.reading_channels = old_state
+        sleep(3)
+
+        self.reading_channels = old_rc_value
+        self.check_connection()
+        if self.connected == False:
+            self.connect()
+        self.attempting_to_connect = False
 
     def request_frequency(self):
         
@@ -174,9 +186,10 @@ class Sensor_Client():
                     self.check_connection() 
                     
             except Exception as e:
-                print (e) 
+                #print (e)
+                pass
 
-        self.reading_channels = False
+        
                 
     
     # Python does not do function overloading
@@ -226,13 +239,11 @@ class Sensor_Client():
             value = self.gtool.expect(['descriptor: .*', '.*Disconnected.*'])
 
             if value == 0:
-                return
+                self.connected = True
             elif value == 1:
                 self.connected = False
-                self.reading_channels = False
         except Exception as e:
-            self.connected = False
-            self.reading_channels = False 
+            self.connected = False 
             
     def disconnect(self):
         self.is_stopped = True
