@@ -6,10 +6,28 @@ matplotlib.use("TkAgg")
 import tkinter as tk
 from tkinter import ttk
 import re
+import os
 from tkinter.filedialog import askopenfilename
 
 LARGE_FONT = ("Verdana", 12)
 NORMAL_FONT = ("Verdana", 12)
+
+def check_latest_modified_file(directory):
+    latest_time = None
+    latest_path = None
+    first_loop = True
+    for file_name in os.listdir(directory):
+        file_path = os.path.join(directory, file_name)
+        if os.path.isfile(file_path):
+            current_time = os.stat(file_path)
+            if not first_loop and int(current_time.st_mtime) > int(latest_time.st_mtime):
+                latest_time = os.stat(file_path)
+                latest_path = file_path
+            elif first_loop:
+                latest_time = os.stat(file_path)
+                latest_path = file_path
+                first_loop = False
+    return latest_path
 
 class Live_GUI(tk.Tk):
 
@@ -25,8 +43,15 @@ class Live_GUI(tk.Tk):
         main_frame.grid_rowconfigure(0, weight=1)
         main_frame.grid_columnconfigure(0, weight=1)
 
+        # Getting the latest file
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+
+        try:
+            file_to_use = check_latest_modified_file(dir_path + '\sensor_data')
+        except FileNotFoundError:
+            file_to_use = check_latest_modified_file(dir_path + '/sensor_data')
         # Initializing the Graph_Container class which contains the graph that will be shown on screen
-        self.graph_frame = Graph_Container(main_frame, self, None)
+        self.graph_frame = Graph_Container(main_frame, self, file_to_use)
         self.graph_frame.grid(row=0, column=0, sticky="nsew")
         self.graph_frame.tkraise()
 
@@ -56,6 +81,7 @@ class Graph_Container(tk.Frame):
         self.file_path = file_path
         self.time_duration_list = []
         self.frequency_list = []
+        self.lines = None
 
         # Defining Figure and Plot classes to use with matplotlib's animation class
         self.graph_figure = Figure(figsize=(5,5), dpi=100)
@@ -86,8 +112,12 @@ class Graph_Container(tk.Frame):
         canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
         # Sets the graph's zoom variables to a default
-        #self.plot_figure(None)
+        self.plot_figure(None)
         #self.graph_plot.autoscale(enable = True)
+
+        self.graph_plot.set_xlim((-1,300))
+        self.graph_plot.set_ylim((-1,2))
+
 
     def change_file_path(self, file_path):
         # Change the file path
@@ -101,9 +131,14 @@ class Graph_Container(tk.Frame):
         self.file_path = file_path
 
         # Change what the label says
-        text = self.file_path.split('/')
-        text = text[len(text) - 1]
-
+        if self.file_path.find('/') != -1:
+            text = self.file_path.split('/')
+            text = text[len(text) - 1]
+        elif self.file_path.find('\\') != -1:
+            text = self.file_path.split('\\')
+            text = text[len(text) - 1]
+        else:
+            text = self.file_path
         self.sensor_name.set(str(text))
 
         # Sets the graph's zoom variables to a default
@@ -122,11 +157,11 @@ class Graph_Container(tk.Frame):
             graph_data = current_file.read()
 
         # Splits the data into a list made of string elements
-        lines = graph_data.split('\n')
+        self.lines = graph_data.split('\n')
 
         # Loops through each string element while spliting the element in order
         # to get each pair of time_duration and frequency
-        for line in lines:
+        for line in self.lines:
             if len(line) >= 1 and not re.search(r'^.*,.*$', line) is None:
 
                 time_duration, frequency = line.split(',')
@@ -146,6 +181,7 @@ class Graph_Container(tk.Frame):
         # Each are list data types
         # Third passed variable is the color of the line and a '-' indicating it's a line
         # Then I create the same plots using scatter plot method to show the vertices.
+
         self.graph_plot.plot(self.time_duration_list, self.frequency_list, 'k-',
                              self.time_duration_list, self.frequency_list, 'bo')
 
