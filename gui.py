@@ -1,9 +1,11 @@
 import tkinter as tk
+from tkinter import ttk
 import matplotlib
 matplotlib.use("TkAgg")
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 from matplotlib.figure import Figure
 import matplotlib.animation as animation
+import re
 
 LARGE_FONT= ("Verdana", 12)
 
@@ -28,9 +30,10 @@ class Live_GUI(tk.Tk):
 
     def run(self):
         figure_animation = animation.FuncAnimation(self.graph_frame.graph_figure, self.graph_frame.plot_figure, interval = 1000)
+
         self.mainloop()
 
-
+# This will the container that we will put inside the main_frame
 class Graph_Container(tk.Frame):
 
     # Parent is the parent tk.Frame class when inherited
@@ -44,10 +47,10 @@ class Graph_Container(tk.Frame):
         self.graph_figure = Figure(figsize=(5,5), dpi=100)
         self.graph_plot = self.graph_figure.add_subplot(1,1,1)
 
-        # Initalizing the Frame class's __init__ function 
+        # Initalizing the Frame class's __init__ function
         tk.Frame.__init__(self, parent)
-        label = tk.Label(self, text="Sensor", font=LARGE_FONT)
-        label.pack(pady=10,padx=10)
+        label = tk.Label(self, text=str(self.file_path), font=LARGE_FONT)
+        label.pack(pady=10,padx=5)
 
         # The canvas that will show the graph_figure in the window
         canvas = FigureCanvasTkAgg(self.graph_figure, self)
@@ -55,6 +58,8 @@ class Graph_Container(tk.Frame):
         canvas.show()
         # Fill the graph to the whole screen
         canvas.get_tk_widget().pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
+
+
 
         # Responsible for giving the toolbar on the bottom of the window
         toolbar = NavigationToolbar2TkAgg(canvas, self)
@@ -74,7 +79,8 @@ class Graph_Container(tk.Frame):
         # Loops through each string element while spliting the element in order
         # to get each pair of time_duration and frequency
         for line in lines:
-            if len(line) > 1:
+            if len(line) >= 1 and not re.search(r'^.*,.*$', line) is None:
+
                 time_duration, frequency = line.split(',')
                 self.time_duration_list.append(time_duration)
                 self.frequency_list.append(frequency)
@@ -83,11 +89,20 @@ class Graph_Container(tk.Frame):
         # First passed variable are the x-axis variables
         # Second passed variables are the y-axis variables
         # Each are list data types
-        self.graph_plot.plot(self.time_duration_list, self.frequency_list)
+        # Third passed variable is the color of the line and a '-' indicating it's a line
+        x_axis_zoom = self.graph_plot.get_xlim()
+        y_axis_zoom = self.graph_plot.get_ylim()
+        self.graph_plot.clear()
+        self.graph_plot.plot(self.time_duration_list, self.frequency_list, 'k-', self.time_duration_list, self.frequency_list, 'bo')
+        self.graph_plot.set_xlim(x_axis_zoom)
+        self.graph_plot.set_ylim(y_axis_zoom)
+
 
         # Clear each list to get read for the next set of data
         self.time_duration_list.clear()
         self.frequency_list.clear()
+
+
 
 if __name__ == '__main__':
     app = Live_GUI()
