@@ -1,3 +1,6 @@
+#######################################################################
+# Writen by: Derek Santos
+#######################################################################
 from sensor_manager import *
 from sensor_client import *
 from time import sleep

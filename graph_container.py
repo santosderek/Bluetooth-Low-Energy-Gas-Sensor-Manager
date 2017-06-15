@@ -1,19 +1,39 @@
+#######################################################################
+# Writen by: Derek Santos
+#######################################################################
+
+
+#######################################################################
+# 3rd Party Modules
+#######################################################################
 import matplotlib
 matplotlib.use("TkAgg")
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 import matplotlib.animation as animation
 from matplotlib.figure import Figure
+
+#######################################################################
+# Python Modules
+#######################################################################
 import tkinter as tk
 from tkinter import ttk
 import re
 import os
 from tkinter.filedialog import askopenfilename
 from threading import Thread
+
+#######################################################################
 # Dev Made Modules
+#######################################################################
 from sensor_client import *
 
+#######################################################################
+# Constants used within the program
+#######################################################################
 LARGE_FONT = ("Verdana", 12)
 NORMAL_FONT = ("Verdana", 12)
+SENSOR_DATA_DIRECTORY = os.path.dirname(os.path.realpath(__file__)) + '/sensor_data/'
+
 
 def check_latest_modified_file(directory):
     latest_time = None
@@ -32,6 +52,18 @@ def check_latest_modified_file(directory):
                 first_loop = False
     return latest_path
 
+# This function gets a list of files with the same sensor MAC Address and time
+def get_related_time_files(directory, sensor_mac_address, time_to_relate):
+
+    list_of_file_names = []
+    for file_name in os.listdir(directory):
+        if file_name.find(sensor_mac_address) != -1 and file_name.find(time_to_relate) != -1:
+            list_of_file_names.append (str(file_name))
+
+    if len(list_of_file_names) == 0:
+        return None
+    else:
+        return list_of_file_names
 
 #######################################################################
 # This will the container that we will put inside the main_frame
@@ -126,30 +158,30 @@ class Graph_Container(tk.Frame):
         # Creating all the Labels used in self.information_label_frame
         #######################################################################
 
-        csv_file_name_label = tk.Label(self.information_label_frame,
+        self.csv_file_name_label = tk.Label(self.information_label_frame,
                                      textvariable = self.csv_file_name,
                                      font=NORMAL_FONT)
-        connected_label = tk.Label(self.information_label_frame,
+        self.connected_label = tk.Label(self.information_label_frame,
                                      textvariable = self.sensor_connected_label,
                                      font=NORMAL_FONT)
-        reading_frequency_label = tk.Label(self.information_label_frame,
+        self.reading_frequency_label = tk.Label(self.information_label_frame,
                                      textvariable = self.reading_frequency,
                                      font=NORMAL_FONT)
-        reading_resistance_label = tk.Label(self.information_label_frame,
+        self.reading_resistance_label = tk.Label(self.information_label_frame,
                                      textvariable = self.reading_resistance,
                                      font=NORMAL_FONT)
-        hv_value_label = tk.Label(self.information_label_frame,
+        self.hv_value_label = tk.Label(self.information_label_frame,
                                      textvariable = self.hv_value,
                                      font=NORMAL_FONT)
 
         #######################################################################
         # Packing all the Labels used in self.information_label_frame
         #######################################################################
-        csv_file_name_label.pack      (pady=5, padx=5, side = tk.TOP)
-        connected_label.pack          (pady=5, padx=5, side = tk.TOP)
-        reading_frequency_label.pack  (pady=5, padx=5, side = tk.TOP)
-        reading_resistance_label.pack (pady=5, padx=5, side = tk.TOP)
-        hv_value_label.pack           (pady=5, padx=5, side = tk.TOP)
+        self.csv_file_name_label.pack      (pady=5, padx=5, side = tk.TOP)
+        self.connected_label.pack          (pady=5, padx=5, side = tk.TOP)
+        self.reading_frequency_label.pack  (pady=5, padx=5, side = tk.TOP)
+        self.reading_resistance_label.pack (pady=5, padx=5, side = tk.TOP)
+        self.hv_value_label.pack           (pady=5, padx=5, side = tk.TOP)
 
         #######################################################################
         # Creating all the Frames used in self.information_button_frame
@@ -173,7 +205,7 @@ class Graph_Container(tk.Frame):
         switch_to_latest_file_button = ttk.Button(file_buttons_frame, text = 'Change To Latest File', command = self.switch_file_to_latest)
 
         # Packing the buttons we created
-        scan_button.pack  (side = tk.TOP,   fill = tk.BOTH, expand = True)
+        scan_button.pack   (side = tk.TOP,   fill = tk.BOTH, expand = True)
         connect_button.pack(side = tk.LEFT,  fill = tk.BOTH, expand = True)
         disconnect_button.pack (side = tk.RIGHT, fill = tk.BOTH, expand = True)
         read_frequency_button.pack(side = tk.LEFT,  fill = tk.BOTH, expand = True)
@@ -240,8 +272,7 @@ class Graph_Container(tk.Frame):
         #######################################################################
         # Sets the graph's zoom variables to a default
         #######################################################################
-        self.plot_frequency_data(None)
-        #self.graph_plot.autoscale(enable = True)
+        self.plot_frequency_data()
 
         #######################################################################
         # Set the plots inital limits
@@ -259,15 +290,16 @@ class Graph_Container(tk.Frame):
     # Sensor Manipulation Functions
     #######################################################################
 
+    # Uses ble_scan function to list nearby devices in the listbox
     def scan_for_devices(self):
         scan_results = ble_scan()
+        self.scan_listbox.delete(0, tk.END)
+
         if scan_results is None:
             # Delete all items in listbox
-            self.scan_listbox.delete(0, tk.END)
             self.scan_listbox.insert(tk.END, 'Nothing Found')
             return
 
-        self.scan_listbox.delete(0, tk.END)
         for address, name in scan_results.items():
             self.scan_listbox.insert(tk.END, '{} - {}'.format(name, address))
 
@@ -299,7 +331,6 @@ class Graph_Container(tk.Frame):
             self.sensor_connected_label.set('ERROR: To Many Symbolic Links. Please Restart.')
             return
 
-        #self.change_sensor_labels()
 
     def infinitely_change_sensor_labels(self):
         while (True):
@@ -311,11 +342,36 @@ class Graph_Container(tk.Frame):
     def disconnect_sensor(self):
         self.sensor.disconnect()
 
+    #######################################################################
+    # Changes the labels within the information_label_frame to appropriate
+    # color and text, depending on the sensor.
+    #######################################################################
     def change_sensor_labels(self):
+        #######################################################################
         self.sensor_connected_label.set('Sensor Connected: %s' % self.sensor.connected)
+        if self.sensor.connected:
+            self.connected_label.config(fg='green')
+        else:
+            self.connected_label.config(fg='red')
+        #######################################################################
         self.reading_frequency.set     ('Reading Frequency: %s' % self.sensor.reading_frequency)
+        if self.sensor.reading_frequency:
+            self.reading_frequency_label.config(fg='green')
+        else:
+            self.reading_frequency_label.config(fg='red')
+        #######################################################################
+
         self.reading_resistance.set    ('Reading Resistance: %s' % self.sensor.reading_resistance)
+        if self.sensor.reading_resistance:
+            self.reading_resistance_label.config(fg='green')
+        else:
+            self.reading_resistance_label.config(fg='red')
+        #######################################################################
         self.hv_value.set              ('HV Values: %s' % self.sensor.hv)
+        if self.sensor.hv:
+            self.hv_value_label.config(fg='green')
+        else:
+            self.hv_value_label.config(fg='red')
 
     #######################################################################
     # GUI Manipulation Functions
@@ -353,7 +409,7 @@ class Graph_Container(tk.Frame):
         if self.file_path[-len('Resistance.csv'):] == 'Resistance.csv':
             self.plot_resistance_data(None)
         else:
-            self.plot_frequency_data(None)
+            self.plot_frequency_data()
 
         self.graph_plot.set_xlim((-1, int(float(self.maximum_x_value))))
         self.graph_plot.set_ylim((-1, int(float(self.maximum_y_value))))
@@ -367,26 +423,66 @@ class Graph_Container(tk.Frame):
         self.change_file_path(path_to_use)
 
     def plot_graph(self, i):
+        # Clear the graph and then plot the points
+        self.graph_plot.clear()
+
         if self.file_path[-len('Resistance.csv'):] == 'Resistance.csv':
-            self.plot_resistance_data(0)
+            self.plot_resistance_data()
 
         elif self.file_path[-len('Resistance.csv'):] != 'Resistance.csv':
-            self.plot_frequency_data(0)
+            if self.file_path.find('-') != -1:
+                # Getting the current_file's start_time
+                time_to_relate = re.search(r'\w+\s\w+\s\d+\s\d+:\d+:\d+\s\d{4}', self.file_path).group(0)
+
+                # Getting the current_file's mac_address
+                mac_address = re.search(r'\w{2}:\w{2}:\w{2}:\w{2}:\w{2}:\w{2}', self.file_path).group(0)
+
+                self.plot_frequency_data_multiple_channels(mac_address, time_to_relate)
+            else:
+                self.plot_frequency_data()
+
+        handles, labels = self.graph_plot.get_legend_handles_labels()
+        self.graph_plot.legend(handles, labels)
+
+
+    def plot_frequency_data_multiple_channels(self, mac_address, time_to_relate):
+
+        list_of_related_files = get_related_time_files(SENSOR_DATA_DIRECTORY,
+                                                       mac_address,
+                                                       time_to_relate)
+
+        if list_of_related_files == None:
+            return
+
+        for file_path in list_of_related_files:
+
+            channel_number = file_path.split('-')[2]
+            channel_number = re.search(r'\d{2}', channel_number).group(0)
+            #print (directory, mac_address, time_to_relate, channel_number)
+            self.plot_frequency_data(SENSOR_DATA_DIRECTORY + file_path, channel_number)
 
     # Function that will be passed into the animation.FuncAnimation function
     # in order to plot the data in real time.
-    def plot_frequency_data(self, i):
+    def plot_frequency_data(self, file_path_to_use = None, channel_number = None):
+
+
         # Opens the csv file that will be needed to plot the data
-        if self.file_path is None:
+        if file_path_to_use is None and self.file_path is None:
             self.graph_plot.clear()
             return
 
-        if self.file_path[-len('Resistance.csv'):] == 'Resistance.csv':
+        # If file_path_to_use is none but there is a self.file_path,
+        # then assign file_path_to_use equal to self.file_path
+        if file_path_to_use is None and self.file_path != None:
+            file_path_to_use = self.file_path
+
+        if file_path_to_use[-len('Resistance.csv'):] == 'Resistance.csv':
             return
+
 
         time_duration_list = []
 
-        with open(self.file_path, 'r') as current_file:
+        with open(file_path_to_use, 'r') as current_file:
             graph_data = current_file.read()
 
         # Splits the data into a list made of string elements
@@ -406,8 +502,7 @@ class Graph_Container(tk.Frame):
         x_axis_zoom = self.graph_plot.get_xlim()
         y_axis_zoom = self.graph_plot.get_ylim()
 
-        # Clear the plot and reset zoom settings
-        self.graph_plot.clear()
+
         # Plot's the data into the current_plot class
         # First passed variable are the x-axis variables
         # Second passed variables are the y-axis variables
@@ -415,8 +510,19 @@ class Graph_Container(tk.Frame):
         # Third passed variable is the color of the line and a '-' indicating it's a line
         # Then I create the same plots using scatter plot method to show the vertices.
 
-        self.graph_plot.plot(time_duration_list, self.frequency_list, 'k-',
-                             time_duration_list, self.frequency_list, 'bo')
+        if str(channel_number) == '64':
+            line_color = 'b-'
+            circle_color = 'bo'
+        elif str(channel_number) == '96':
+            line_color = 'g-'
+            circle_color = 'go'
+        else:
+            line_color = 'r-'
+            circle_color = 'ro'
+
+        self.graph_plot.plot(time_duration_list, self.frequency_list, line_color,
+                             time_duration_list, self.frequency_list, circle_color,
+                             label = 'Channel %s' % channel_number)
 
         # Sets the graph's zoom variables to what the user had it to before
         self.graph_plot.set_xlim(x_axis_zoom)
@@ -433,7 +539,9 @@ class Graph_Container(tk.Frame):
         time_duration_list.clear()
         self.frequency_list.clear()
 
-    def plot_resistance_data(self, i):
+
+
+    def plot_resistance_data(self):
         # If file_path hasn't been set yet, clear graph and return
         if self.file_path is None:
             self.graph_plot.clear()
@@ -466,8 +574,7 @@ class Graph_Container(tk.Frame):
         x_axis_zoom = self.graph_plot.get_xlim()
         y_axis_zoom = self.graph_plot.get_ylim()
 
-        # Clear the graph and then plot the points
-        self.graph_plot.clear()
+
         self.graph_plot.plot(time_duration_list, resistance_list, 'k-',
                              time_duration_list, resistance_list, 'bo')
 

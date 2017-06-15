@@ -1,3 +1,7 @@
+#######################################################################
+# Writen by: Derek Santos
+#######################################################################
+
 """
 
 Hexadecimal Valued Access Codes:
@@ -31,9 +35,10 @@ def ble_scan():
             print ('Name: {} - Address: {}'.format(name, address))
         return nearby_devices
 
-    except RuntimeError:
-        print ('ERROR: Make sure you are root before scaning...')
+    except RuntimeError as e:
+        print ('ERROR: Make sure you are root before scaning...', e)
         return None
+
 class Sensor_Client():
     def __init__(self, ADDRESS):
 
