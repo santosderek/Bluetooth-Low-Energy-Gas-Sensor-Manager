@@ -182,6 +182,8 @@ class Graph_Container(tk.Frame):
         self.reading_frequency_label.pack  (pady=5, padx=5, side = tk.TOP)
         self.reading_resistance_label.pack (pady=5, padx=5, side = tk.TOP)
         self.hv_value_label.pack           (pady=5, padx=5, side = tk.TOP)
+        self.hv_value_label.config(fg='green')
+
 
         #######################################################################
         # Creating all the Frames used in self.information_button_frame
@@ -368,10 +370,7 @@ class Graph_Container(tk.Frame):
             self.reading_resistance_label.config(fg='red')
         #######################################################################
         self.hv_value.set              ('HV Values: %s' % self.sensor.hv)
-        if self.sensor.hv:
-            self.hv_value_label.config(fg='green')
-        else:
-            self.hv_value_label.config(fg='red')
+
 
     #######################################################################
     # GUI Manipulation Functions
@@ -573,7 +572,6 @@ class Graph_Container(tk.Frame):
         # resets the dimensions within the function
         x_axis_zoom = self.graph_plot.get_xlim()
         y_axis_zoom = self.graph_plot.get_ylim()
-
 
         self.graph_plot.plot(time_duration_list, resistance_list, 'k-',
                              time_duration_list, resistance_list, 'bo')
