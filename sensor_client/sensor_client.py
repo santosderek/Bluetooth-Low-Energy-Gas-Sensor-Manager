@@ -20,6 +20,7 @@ import sys
 import os
 import struct
 import binascii
+from threading import Thread
 from time import sleep, time, ctime
 import bluetooth.ble as bluetooth
 
@@ -89,7 +90,10 @@ class Sensor_Client():
             self.frequency_average = None
             self.frequency_list = []
 
-
+            # Creation of the run thread
+            self.run_thread = Thread(target=self.run, args=())
+            self.run_thread.daemon = True
+            self.run_thread.start()
 
         except Exception as e:
             raise e
@@ -152,6 +156,9 @@ class Sensor_Client():
                     return
                 self.connect()
 
+            except pexpect.exceptions.EOF as eof:
+                self.gtool = pexpect.spawnu('sudo gatttool -i hci0 -b {addr} -t random -I'.format(addr = self.address), timeout = 3)
+                
             # If there was an uknown error state the error and try again.
             except Exception as e:
                 print ('ERROR:', e)
@@ -201,6 +208,10 @@ class Sensor_Client():
     def read_frequency(self):
         if self.start_time is None:
             self.start_time = time()
+
+        # Each frequency that will be recorded will be put into this list.
+        # The order of the frequencies will be respective to the order of the channels.
+        frequencies = []
         # For each channel being passed into the class
         for channel in self.channels:
             # Ready the sensor for being used
@@ -229,29 +240,34 @@ class Sensor_Client():
 
             # Formula to convert the count recieved from Hz to MHz
             frequency = float(count) / float(2) / (self.gate_time / 1000.0) / 1000000.0
+            frequencies.append((time() - self.start_time, frequency))
 
             # If the list of frequency data that we have has values within itself
-            if len(self.frequency_list) > 0:
-                # Check if the frequency is within acceptable range
+            #if len(self.frequency_list) > 0:
+            #    # Check if the frequency is within acceptable range
 
-                if self.check_frequency(frequency):
-                    # Append if acceptable
-                    self.frequency_list.append(frequency)
-                # If not acceptable then skip writing it to the file
-                else:
-                    continue
+            #    if self.check_frequency(frequency):
+            #        # Append if acceptable
+            #        self.frequency_list.append(frequency)
+            #    # If not acceptable then skip writing it to the file
+            #    else:
+            #        continue
 
-            else:
-                # If it is the first element then automatically put it within the file
-                # And append it to the frequency_list
-                self.frequency_list.append(frequency)
+            #else:
+            #    # If it is the first element then automatically put it within the file
+            #    # And append it to the frequency_list
+            #    self.frequency_list.append(frequency)
 
             # Append this value and the current time duration to a file
             # The file name contains the MAC Address, Date/time, and channel
-            dir_path = os.path.dirname(os.path.realpath(__file__))
-            with open(dir_path + '/sensor_data/{0} - {1} - {2:02d} - Frequency.csv'.format(self.address, ctime(self.start_time), channel), 'a') as current_file:
-                data = '{0:5.1f},{1:1.8f}\n'.format(time() - self.start_time, float (frequency))
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+
+        with open(dir_path + '/sensor_data/{0} - {1} - Frequency.csv'.format(self.address, ctime(self.start_time)), 'a') as current_file:
+            for channel, (time_dur, freq) in zip(self.channels, frequencies):
+                data = '{0:02d},{1:5.1f},{2:1.8f},'.format(channel, time_dur, float (frequency))
                 current_file.write(data)
+            current_file.write('\n')
+
 
     def read_resistance(self):
         if self.start_time is None:
@@ -369,7 +385,7 @@ class Sensor_Client():
 
             except Exception as e:
                 print (e)
-                #pass
+                raise (e)
 
     def disconnect(self):
         self.set_to_disconnected()
