@@ -72,7 +72,7 @@ class Sensor_Client():
             self.is_stopped = False
 
             # All of the channels we will read
-            self.channels = [0x40, 0x60]
+            self.channels = [0x10,0x20,0x30,0x40,0x50,0x60,0x70]
 
             # Variable for the ammount of time gate time takes on the sensor
             # In milliseconds
@@ -158,7 +158,7 @@ class Sensor_Client():
 
             except pexpect.exceptions.EOF as eof:
                 self.gtool = pexpect.spawnu('sudo gatttool -i hci0 -b {addr} -t random -I'.format(addr = self.address), timeout = 3)
-                
+
             # If there was an uknown error state the error and try again.
             except Exception as e:
                 print ('ERROR:', e)
@@ -382,10 +382,12 @@ class Sensor_Client():
                      not self.reading_frequency and self.connected:
                     # To check if we are still connected we can read from the sensor
                     self.check_connection()
+                    sleep (3)
+                else:
+                    sleep (1)
 
             except Exception as e:
                 print (e)
-                raise (e)
 
     def disconnect(self):
         self.set_to_disconnected()
