@@ -60,6 +60,9 @@ class Main_Window(Tk):
 
         self.raise_to_front('graph')
 
+
+        self.graph_thread = None
+
     def raise_to_front(self, frame_name):
         if frame_name == 'graph':
             self.graph_page.tkraise()
@@ -80,12 +83,15 @@ class Main_Window(Tk):
         self.geometry('1280x720')
         self.protocol("WM_DELETE_WINDOW", self.quit_application)
 
-        self.graph_page.plot_points(stop_zoom_resetting = False)
+        self.graph_page.plot_points(reset_zoom = False, loop = False)
         self.graph_page.graph_plot.set_xlim((-1,3000))
         self.graph_page.graph_plot.set_ylim((-1,5))
         anim = FuncAnimation(self.graph_page.graph_figure,
                              self.graph_page.plot_points,
                              interval = 1000)
+
+        #self.graph_thread = Thread (target = self.graph_page.plot_points, args=(), daemon=True)
+        #self.graph_thread.start()
 
         self.mainloop()
 

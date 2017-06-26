@@ -15,6 +15,10 @@ Hexadecimal Valued Access Codes:
 
 """
 
+
+# NOTE: MUST sudo apt-get install libpq-dev for importing psycopg2 | linux only
+
+
 import pexpect
 import sys
 import os
@@ -23,6 +27,7 @@ import binascii
 from threading import Thread
 from time import sleep, time, ctime
 import bluetooth.ble as bluetooth
+from psycopg2 import *
 
 def ble_scan():
     # Scan's for all BLE devices nearby for 5 seconds
@@ -173,12 +178,14 @@ class Sensor_Client():
 
     # Changes the hv value if the sensor is connected
     def change_hv_value(self, value):
-        self.hv = value
 
         # If not connected, print 'not connected', and return
         if not self.connected:
             print ('Not connected')
             return
+
+        self.hv = value
+        
         # old reading channels value
         old_rc_value = self.reading_frequency
 
@@ -262,11 +269,15 @@ class Sensor_Client():
             # The file name contains the MAC Address, Date/time, and channel
         dir_path = os.path.dirname(os.path.realpath(__file__))
 
+        #for channel, (time_dur, freq) in zip(self.channels, frequencies):
+        #    self.update_postgres(self.address, self.start_time, time_dur, freq)
         with open(dir_path + '/sensor_data/{0} - {1} - Frequency.csv'.format(self.address, ctime(self.start_time)), 'a') as current_file:
             for channel, (time_dur, freq) in zip(self.channels, frequencies):
                 data = '{0:02d},{1:5.1f},{2:1.8f},'.format(channel, time_dur, float (frequency))
                 current_file.write(data)
             current_file.write('\n')
+
+
 
 
     def read_resistance(self):
@@ -295,6 +306,23 @@ class Sensor_Client():
         with open(dir_path + '/sensor_data/{0} - {1} - {2}.csv'.format(self.address, ctime(self.start_time), 'Resistance'), 'a') as current_file:
             data = '{0:5.1f},{1:5d},{2:5.3f},{3:5.3f}\n'.format(time_duration, digital_value, voltage_ref, float(resistance))
             current_file.write(data)
+
+    def update_postgres(self, mac_address, start_time, time_duration, frequency):
+        connection = connect (dbname = database_name,
+                              user=database_user,
+                              password=database_password,
+                              host=database_host_ip,
+                              port=database_port)
+        cursor = connection.cursor()
+        insert_command = "INSERT INTO frequency_values VALUES ('{mac_add}','{s_time}','{time_dur}','{freq}');"
+        insert_command.format(mac_add = mac_address,
+                              s_time = start_time,
+                              time_dur = time_duration,
+                              frequency = frequency)
+        cursor.execute(insert_command)
+        connection.commit()
+        cursor.close()
+        connection.close()
 
     # To calculate the frequency_average we take the average of frequency_list
     # But it will only do the latest 5 items

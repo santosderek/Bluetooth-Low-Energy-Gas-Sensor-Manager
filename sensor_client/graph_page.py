@@ -8,6 +8,8 @@ from tkinter import *
 from tkinter import ttk
 from tkinter.filedialog import askopenfilename
 
+from time import sleep, time
+
 from config import *
 
 def select_latest_file(directory = DIRECTORY_OF_SENSOR_DATA):
@@ -50,6 +52,9 @@ class Graph_Frame(Frame):
 
         self.points_to_plot = []
 
+        self.graph_settings_frame = Graph_Settings_Frame(self)
+        self.graph_settings_frame.pack(side = BOTTOM, fill = BOTH, expand = False)
+
 
     def return_channel_color(self, channel):
         if channel == '64':
@@ -79,33 +84,49 @@ class Graph_Frame(Frame):
 
         return (line_color, circle_color)
 
-    def plot_points(self, i = 0, stop_zoom_resetting = True):
+    def plot_points(self, i = 0, reset_zoom = True, loop = True):
 
-        if stop_zoom_resetting:
-            x_axis_zoom = self.graph_plot.get_xlim()
-            y_axis_zoom = self.graph_plot.get_ylim()
+        #while True:
+        try:
+            if reset_zoom:
+                x_axis_zoom = self.graph_plot.get_xlim()
+                y_axis_zoom = self.graph_plot.get_ylim()
 
-        self.graph_plot.clear()
+            self.graph_plot.clear()
 
+            if self.file_path is None:
+                return
+            elif self.file_path[-len('Frequency.csv'):] == 'Frequency.csv':
+                self.update_frequency_points()
 
-        if self.file_path[-len('Frequency.csv'):] == 'Frequency.csv':
-            self.update_frequency_points()
+            elif self.file_path[-len('Resistance.csv'):] == 'Resistance.csv':
+                self.update_resistance_points()
 
-        elif self.file_path[-len('Resistance.csv'):] == 'Resistance.csv':
-            self.update_resistance_points()
+            handles, labels = self.graph_plot.get_legend_handles_labels()
+            self.graph_plot.legend(handles, labels)
 
-        handles, labels = self.graph_plot.get_legend_handles_labels()
-        self.graph_plot.legend(handles, labels)
+            if reset_zoom:
+                self.graph_plot.set_xlim(x_axis_zoom)
+                self.graph_plot.set_ylim(y_axis_zoom)
+            #if not loop:
+            #    return
 
+            #sleep(3)
 
-        if stop_zoom_resetting:
-            self.graph_plot.set_xlim(x_axis_zoom)
-            self.graph_plot.set_ylim(y_axis_zoom)
+        except Exception as e:
+            print ('ERROR: Plot Points:', e)
 
     def update_frequency_points(self, i = 0):
 
-        directory_of_channels = {'64':[ [], [] ], '96':[ [], [] ], '16':[ [], [] ], '32':[ [], [] ], '48':[ [], [] ],'80':[ [], [] ],'112':[ [], [] ]}
-
+        directory_of_channels = {'16':[ [], [] ],
+                                 '32':[ [], [] ],
+                                 '48':[ [], [] ],
+                                 '64':[ [], [] ],
+                                 '80':[ [], [] ],
+                                 '96':[ [], [] ],
+                                 '112':[ [], [] ]}
+        list_of_line_plots = []
+        list_of_circle_plots = []
 
         with open(self.file_path, 'r') as current_file:
             file_lines = current_file.read().split('\n')
@@ -124,24 +145,20 @@ class Graph_Frame(Frame):
                 line.remove(' ')
             if '' in line:
                 line.remove('')
-            for count in range(0, len(line), 3):
 
+            for count in range(0, len(line), 3):
                 line_color, circle_color = self.return_channel_color(line[count])
 
                 directory_of_channels[line[count]][0].append(line[count + 1])
                 directory_of_channels[line[count]][1].append(line[count + 2])
 
-
         for channel in directory_of_channels:
             line_color, circle_color = self.return_channel_color(channel)
             self.graph_plot.plot(directory_of_channels[channel][0],
                                  directory_of_channels[channel][1],
-                                 line_color,
-                                 label = 'Channel %s' % str(channel))
-            self.graph_plot.plot(directory_of_channels[channel][0],
-                                 directory_of_channels[channel][1],
-                                 circle_color,
-                                 label = 'Channel %s' % str(channel))
+                                 marker = 'o',
+                                 linestyle = '-',
+                                 label = 'Channel %s' % str(channel))[0]
 
     def update_resistance_points(self):
         current_pos = 0
@@ -166,5 +183,15 @@ class Graph_Frame(Frame):
             time_duration_list.append (line[0])
             resistance_list.append (line[3])
 
-        self.graph_plot.plot(time_duration_list, resistance_list, 'g-')
-        self.graph_plot.plot(time_duration_list, resistance_list, 'yo')
+        self.graph_plot.plot(time_duration_list,
+                             resistance_list,
+                             marker = 'o',
+                             linestyle = '-')
+
+
+class Graph_Settings_Frame (Frame):
+    def __init__ (self, parent_container):
+        Frame.__init__ (self, parent_container)
+
+        Label(self, text = 'PUT THE GRAPH SETTINGS HERE. STUFF LIKE CHANGING X left and right limits, AND Y left and RIGHT LIMITS').pack(side = TOP, fill = BOTH, expand = True)
+        
