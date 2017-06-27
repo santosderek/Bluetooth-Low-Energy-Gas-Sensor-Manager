@@ -37,13 +37,14 @@ class Graph_Frame(Frame):
 
         self.file_path = select_latest_file()
 
-        self.graph_figure = Figure(figsize = (5,5), dpi = 100)
+        self.graph_figure = Figure(figsize = (1,1), dpi = 100)
         self.graph_plot = self.graph_figure.add_subplot(1,1,1)
+
 
         # Setting up canvas
         self.canvas = FigureCanvasTkAgg(self.graph_figure, self)
-        self.canvas.show()
         self.canvas._tkcanvas.pack(side = TOP, fill = BOTH, expand = True )
+        self.canvas.show()
 
         # Setting up toolbar
         self.toolbar = NavigationToolbar2TkAgg(self.canvas, self)
@@ -57,6 +58,7 @@ class Graph_Frame(Frame):
 
         self.graph_checkbox_frame = Channel_Checkbox_Frame(self)
         self.graph_checkbox_frame.pack(side = BOTTOM, fill = BOTH, expand = False)
+
 
 
     def return_channel_color(self, channel):
@@ -91,11 +93,17 @@ class Graph_Frame(Frame):
 
         #while True:
         try:
+
             if reset_zoom:
                 x_axis_zoom = self.graph_plot.get_xlim()
                 y_axis_zoom = self.graph_plot.get_ylim()
 
             self.graph_plot.clear()
+            mac_address = re.search(r'\w{2}:\w{2}:\w{2}:\w{2}:\w{2}:\w{2}', self.file_path).group(0)
+            start_time = re.search(r'\w{3}\s\w{3}\s\d{2}\s\d{2}:\d{2}:\d{2}\s\d{4}', self.file_path).group(0)
+            self.graph_figure.suptitle('Resonant frequency\n{}\n{}'.format(mac_address, start_time), fontsize=11)
+            self.graph_plot.set_ylabel('Frequency (MHz)')
+            self.graph_plot.set_xlabel('Time Duration (Seconds)')
 
             if self.file_path is None:
                 return
@@ -208,22 +216,27 @@ class Graph_Settings_Frame (Frame):
         self.y_left_limit_entry  = Entry(self)
         self.y_right_limit_entry = Entry(self)
 
-        x_left_limit_label = Label (self, text  = 'X Left:')
-        x_right_limit_label = Label (self, text = 'X Right:')
-        y_left_limit_label = Label (self, text  = 'Y Down:')
-        y_right_limit_label = Label (self, text = 'Y Up:')
+        x_range_label =  Label (self, text = 'X Range (')
+        y_range_label =  Label (self, text = '), Y Range (')
 
-        x_left_limit_label.pack(side = LEFT, fill = BOTH, expand = True)
+        # X RANGE
+        x_range_label.pack(side = LEFT, fill = BOTH, expand = True)
         self.x_left_limit_entry.pack( side = LEFT, fill = BOTH, expand = True)
 
-        x_right_limit_label.pack(side = LEFT, fill = BOTH, expand = True)
+        Label(self, text = ',').pack(side = LEFT, fill = BOTH, expand = True )
+
         self.x_right_limit_entry.pack(side = LEFT, fill = BOTH, expand = True)
 
-        y_left_limit_label.pack(side = LEFT, fill = BOTH, expand = True)
+        # Y RANGE
+        y_range_label.pack(side = LEFT, fill = BOTH, expand = True)
         self.y_left_limit_entry.pack( side = LEFT, fill = BOTH, expand = True)
 
-        y_right_limit_label.pack(side = LEFT, fill = BOTH, expand = True)
+        Label(self, text = ',').pack(side = LEFT, fill = BOTH, expand = True)
+
         self.y_right_limit_entry.pack(side = LEFT, fill = BOTH, expand = True)
+
+        Label(self, text = ')').pack(side = LEFT, fill = BOTH, expand = True)
+
 
         self.change_button = Button (self, text = 'Apply Limits', command = self.update_graph_limits)
         self.change_button.pack (side = LEFT, fill = BOTH, expand = True)

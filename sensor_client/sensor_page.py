@@ -34,6 +34,8 @@ class Sensor_Manager_Frame(Frame):
         for s_node in self.list_of_sensor_node_frames:
             s_node.pack(side = TOP, fill = BOTH, expand = False)
 
+
+
     def add_sensor_node(self, passedName):
         name, mac_address = passedName.split ('-')
         name.replace(' ', '')
@@ -77,6 +79,8 @@ class Sensor_Scan_Frame(Frame):
 
         # Bool to see if device is scanning
         self.is_scanning = False
+
+
 
     def add_sensor(self):
         cursor_selection = self.list_box.curselection()
@@ -128,8 +132,7 @@ class Sensor_Node_Frame(Frame):
         self.reading_resistance_string_var = StringVar()
         self.reading_resistance_string_var.set('Reading Resistance')
         self.voltage_var = StringVar()
-        self.voltage_var.set('Voltage: ' + str(self.sensor.hv))
-
+        self.voltage_var.set('Voltage: ' + str(self.sensor.high_voltage))
 
         self.sensor_name_label = Label(self, textvariable = self.name_string_var)
         self.sensor_connected_label = Label(self, textvariable = self.connected_string_var)
@@ -166,6 +169,8 @@ class Sensor_Node_Frame(Frame):
                                            args = (),
                                            daemon=True)
         self.update_labels_thread.start()
+
+
 
     def change_graph_to_sensor(self):
         pass
@@ -207,9 +212,9 @@ class Sensor_Node_Frame(Frame):
                 self.sensor_reading_resistance_label.config(fg = 'red')
 
             self.voltage_var.set('Voltage( int:' +
-                                 str(self.sensor.hv) +
+                                 str(self.sensor.high_voltage) +
                                  ', hex:' +
-                                 str(hex(self.sensor.hv)) +
+                                 str(hex(self.sensor.high_voltage)) +
                                  ' )')
 
 class Sensor_Settings(Toplevel):
@@ -221,6 +226,12 @@ class Sensor_Settings(Toplevel):
 
         self.voltage_frame = Sensor_Voltage_Frame(self, self.sensor)
         self.voltage_frame.pack(side = TOP, fill = BOTH, expand = False)
+
+        self.gate_time_frame = Sensor_Gate_Time_Frame(self, self.sensor)
+        self.gate_time_frame.pack(side = TOP, fill = BOTH, expand = False)
+
+        self.reconnect_frame = Sensor_Reconnect_Frame(self, self.sensor)
+        self.reconnect_frame.pack(side = TOP, fill = BOTH, expand = False)
 
 
 class Sensor_Voltage_Frame(Frame):
@@ -234,12 +245,74 @@ class Sensor_Voltage_Frame(Frame):
         self.up_button = Button(self, text = '+5', command = self.add_five)
         self.down_button = Button(self, text = '-5', command = self.subtract_five)
 
+        Label (self, text = 'Change Voltage:').pack(side = LEFT, fill = BOTH, expand = False)
         self.voltage_entry.pack(side = LEFT, fill = BOTH, expand = False)
         self.up_button.pack(side = LEFT, fill = BOTH, expand = False)
         self.down_button.pack(side = LEFT, fill = BOTH, expand = False)
 
     def add_five(self):
-        self.sensor.change_hv_value(self.sensor.hv + 5)
+        self.sensor.change_hv_value(self.sensor.high_voltage + 5)
 
     def subtract_five(self):
-        self.sensor.change_hv_value(self.sensor.hv - 5)
+        self.sensor.change_hv_value(self.sensor.high_voltage - 5)
+
+class Sensor_Gate_Time_Frame(Frame):
+    def __init__ (self, parent_container, sensor):
+        Frame.__init__(self, parent_container)
+
+        self.parent_container = parent_container
+        self.sensor = sensor
+
+        self.gate_time_text = StringVar()
+        self.gate_time_text.set('Gate Time: %s (milliseconds)' % str(self.sensor.gate_time) )
+
+        self.gate_time_entry = Entry(self)
+        self.gate_time_entry.insert(0, str(self.sensor.gate_time))
+        self.change_gate_time_button = Button (self, text = 'Change Gate Time', command = self.set_gate_time)
+
+        Label(self, textvariable = self.gate_time_text).pack(side = LEFT, fill = BOTH, expand = False)
+        self.gate_time_entry.pack(side = LEFT, fill = BOTH, expand = False)
+        self.change_gate_time_button.pack(side = LEFT, fill = BOTH, expand = False)
+
+    def set_gate_time (self):
+        try:
+            new_gate_time_string = self.gate_time_entry.get()
+            if not new_gate_time_string == '':
+                new_gate_time_int = int(new_gate_time_string)
+                self.sensor.gate_time = new_gate_time_int
+                self.gate_time_text.set('Gate Time: %s (milliseconds)' % str(self.sensor.gate_time) )
+
+
+        except Exception as e:
+            pass
+
+class Sensor_Reconnect_Frame(Frame):
+    def __init__(self, parent_container, sensor):
+        Frame.__init__(self, parent_container)
+
+        self.parent_container = parent_container
+        self.sensor = sensor
+
+        self.reconnecting_stringvar = StringVar()
+        self.reconnecting_stringvar.set('Reconnecting')
+
+        self.reconnecting_label = Label(self, text = 'Reconnecting')
+        self.reconnecting_label.pack(side = LEFT, fill = BOTH, expand = False)
+
+        if self.sensor.reconnecting_allowed:
+            self.reconnecting_label.config(fg = 'green')
+        else:
+            self.reconnecting_label.config(fg = 'red')
+
+
+        self.reconnect_button = Button(self, text = 'Toggle Reconnect', command = self.toggle_reconnect)
+        self.reconnect_button.pack(side = LEFT, fill = BOTH, expand = False)
+
+    def toggle_reconnect(self):
+        if self.sensor.reconnecting_allowed:
+            self.sensor.reconnecting_allowed = False
+            self.reconnecting_label.config(fg = 'red')
+
+        else:
+            self.sensor.reconnecting_allowed = True
+            self.reconnecting_label.config(fg = 'green')

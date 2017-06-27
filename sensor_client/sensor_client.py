@@ -31,18 +31,12 @@ from psycopg2 import *
 
 def ble_scan():
     # Scan's for all BLE devices nearby for 5 seconds
-
     try:
-        print ('Searching for devices...')
         service = bluetooth.DiscoveryService()
         nearby_devices = service.discover(5)
-        # Lists the devices found during the search
-        for address, name in nearby_devices.items():
-            print ('Name: {} - Address: {}'.format(name, address))
         return nearby_devices
 
     except RuntimeError as e:
-        print ('ERROR: Make sure you are root before scaning...', e)
         return None
 
 class Sensor_Client():
@@ -60,6 +54,9 @@ class Sensor_Client():
 
             # Variable to check if we are connected to sensor
             self.connected = False
+
+            # If this is set to True then if sensor is not connected, it will try to reconnect
+            self.reconnecting_allowed = False
 
             # Variable that will be set to true when trying to connect to sensor.
             # Allows all other functions to be aware that we are trying to connect
@@ -87,10 +84,10 @@ class Sensor_Client():
             time_per_bit = 1000 # in us
 
             # Calculation for the total time we must request each frequency to be in sync with the sensor
-            self.gate_time_delay = time_per_bit * 4 * 8.0 * (1/1000000.0)
+            self.time_per_bit_delay = time_per_bit * 4 * 8.0 * (1/1000000.0)
 
             # Default HV value being used at the start of recording data
-            self.hv = 0x50
+            self.high_voltage = 0x50
 
             self.frequency_average = None
             self.frequency_list = []
@@ -139,7 +136,7 @@ class Sensor_Client():
                                            '.*refused.*'], timeout = 3)
                 if index == 0:
                     self.connected = True
-                    #self.change_hv_value(self.hv)
+                    #self.change_hv_value(self.high_voltage)
                     self.stop_connection_checking = False
                 elif index == 1:
                     print ('Device busy. Trying again')
@@ -184,7 +181,7 @@ class Sensor_Client():
             print ('Not connected')
             return
 
-        self.hv = value
+        self.high_voltage = value
 
         # old reading channels value
         old_rc_value = self.reading_frequency
@@ -198,7 +195,7 @@ class Sensor_Client():
         # Wait 3 seconds to make sure the reading thread has time to stop reading
         sleep (3)
         # Send the command to gatttol in order to change the hv
-        self.gtool.sendline(self.char_write(0x02, 0x00, self.hv))
+        self.gtool.sendline(self.char_write(0x02, 0x00, self.high_voltage))
         # Sleep for 3 seconds to make sure the command was sent
         sleep(3)
         # Set reading_frequency to what it was before
@@ -229,12 +226,12 @@ class Sensor_Client():
             self.gtool.sendline(self.gate_time_write(0x05, self.gate_time))
 
             # Sleep for the total time of the sensor's gate time
-            sleep(self.gate_time_delay)
+            sleep(self.time_per_bit_delay)
             sleep(self.gate_time / 1000.0)
 
             # Request the frequency data
             self.gtool.sendline(self.char_write(0x04, 0x08, 0x04))
-            sleep(self.gate_time_delay)
+            sleep(self.time_per_bit_delay)
 
             # To get the Frequency we have to take out the word 'descriptor' with the space at the end
             frequency = self.read_handle()
@@ -276,9 +273,6 @@ class Sensor_Client():
                 data = '{0:02d},{1:5.1f},{2:1.8f},'.format(channel, time_dur, float (frequency))
                 current_file.write(data)
             current_file.write('\n')
-
-
-
 
     def read_resistance(self):
         if self.start_time is None:
@@ -411,6 +405,9 @@ class Sensor_Client():
                     # To check if we are still connected we can read from the sensor
                     self.check_connection()
                     sleep (3)
+                elif self.reconnecting_allowed:
+                    self.connect(connect_once = True)
+                    sleep(1)
                 else:
                     sleep (1)
 
