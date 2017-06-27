@@ -77,7 +77,7 @@ class Sensor_Client():
             self.is_stopped = False
 
             # All of the channels we will read
-            self.channels = [0x10,0x20,0x30,0x40,0x50,0x60,0x70]
+            self.channels = [0x00, 0x10,0x20,0x30,0x40,0x50,0x60,0x70]
 
             # Variable for the ammount of time gate time takes on the sensor
             # In milliseconds
@@ -185,7 +185,7 @@ class Sensor_Client():
             return
 
         self.hv = value
-        
+
         # old reading channels value
         old_rc_value = self.reading_frequency
 

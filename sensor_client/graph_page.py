@@ -55,6 +55,9 @@ class Graph_Frame(Frame):
         self.graph_settings_frame = Graph_Settings_Frame(self)
         self.graph_settings_frame.pack(side = BOTTOM, fill = BOTH, expand = False)
 
+        self.graph_checkbox_frame = Channel_Checkbox_Frame(self)
+        self.graph_checkbox_frame.pack(side = BOTTOM, fill = BOTH, expand = False)
+
 
     def return_channel_color(self, channel):
         if channel == '64':
@@ -118,13 +121,14 @@ class Graph_Frame(Frame):
 
     def update_frequency_points(self, i = 0):
 
-        directory_of_channels = {'16':[ [], [] ],
-                                 '32':[ [], [] ],
-                                 '48':[ [], [] ],
-                                 '64':[ [], [] ],
-                                 '80':[ [], [] ],
-                                 '96':[ [], [] ],
-                                 '112':[ [], [] ]}
+        directory_of_channels = {0:[ [], [] ],
+                                 16:[ [], [] ],
+                                 32:[ [], [] ],
+                                 48:[ [], [] ],
+                                 64:[ [], [] ],
+                                 80:[ [], [] ],
+                                 96:[ [], [] ],
+                                 112:[ [], [] ]}
         list_of_line_plots = []
         list_of_circle_plots = []
 
@@ -149,16 +153,19 @@ class Graph_Frame(Frame):
             for count in range(0, len(line), 3):
                 line_color, circle_color = self.return_channel_color(line[count])
 
-                directory_of_channels[line[count]][0].append(line[count + 1])
-                directory_of_channels[line[count]][1].append(line[count + 2])
+                directory_of_channels[int(line[count])][0].append(line[count + 1])
+                directory_of_channels[int(line[count])][1].append(line[count + 2])
 
         for channel in directory_of_channels:
+            if self.graph_checkbox_frame.directory_of_channels[channel].get() == 0:
+                continue
+
             line_color, circle_color = self.return_channel_color(channel)
             self.graph_plot.plot(directory_of_channels[channel][0],
                                  directory_of_channels[channel][1],
                                  marker = 'o',
                                  linestyle = '-',
-                                 label = 'Channel %s' % str(channel))[0]
+                                 label = 'Channel %s' % str(hex(channel)))[0]
 
     def update_resistance_points(self):
         current_pos = 0
@@ -193,5 +200,111 @@ class Graph_Settings_Frame (Frame):
     def __init__ (self, parent_container):
         Frame.__init__ (self, parent_container)
 
-        Label(self, text = 'PUT THE GRAPH SETTINGS HERE. STUFF LIKE CHANGING X left and right limits, AND Y left and RIGHT LIMITS').pack(side = TOP, fill = BOTH, expand = True)
-        
+        self.parent_container = parent_container
+
+        Label(self, text = 'Graph Settings').pack(side = TOP, fill = BOTH, expand = True)
+        self.x_left_limit_entry  = Entry(self)
+        self.x_right_limit_entry = Entry(self)
+        self.y_left_limit_entry  = Entry(self)
+        self.y_right_limit_entry = Entry(self)
+
+        x_left_limit_label = Label (self, text  = 'X Left:')
+        x_right_limit_label = Label (self, text = 'X Right:')
+        y_left_limit_label = Label (self, text  = 'Y Down:')
+        y_right_limit_label = Label (self, text = 'Y Up:')
+
+        x_left_limit_label.pack(side = LEFT, fill = BOTH, expand = True)
+        self.x_left_limit_entry.pack( side = LEFT, fill = BOTH, expand = True)
+
+        x_right_limit_label.pack(side = LEFT, fill = BOTH, expand = True)
+        self.x_right_limit_entry.pack(side = LEFT, fill = BOTH, expand = True)
+
+        y_left_limit_label.pack(side = LEFT, fill = BOTH, expand = True)
+        self.y_left_limit_entry.pack( side = LEFT, fill = BOTH, expand = True)
+
+        y_right_limit_label.pack(side = LEFT, fill = BOTH, expand = True)
+        self.y_right_limit_entry.pack(side = LEFT, fill = BOTH, expand = True)
+
+        self.change_button = Button (self, text = 'Apply Limits', command = self.update_graph_limits)
+        self.change_button.pack (side = LEFT, fill = BOTH, expand = True)
+
+    def update_graph_limits(self):
+        # Convert text into int: X Left Limit
+        try:
+            x_left_string = self.x_left_limit_entry.get()
+
+            if x_left_string == '':
+                x_left_int = self.parent_container.graph_plot.get_xlim()[0]
+            else:
+                x_left_int = float (x_left_string)
+
+        except Exception as e:
+            x_left_int = self.parent_container.graph_plot.get_xlim()[0]
+            print (e)
+
+        # Convert text into int: X Right Limit
+        try:
+            x_right_string = self.x_right_limit_entry.get()
+
+            if x_right_string == '':
+                x_right_int = self.parent_container.graph_plot.get_xlim()[1]
+            else:
+                x_right_int = float(x_right_string)
+
+        except Exception as e:
+            x_right_int = self.parent_container.graph_plot.get_xlim()[1]
+            print (e)
+
+        # Convert text into int: Y Left Limit
+        try:
+            y_left_string = self.y_left_limit_entry.get()
+
+            if y_left_string == '':
+                y_left_int = self.parent_container.graph_plot.get_ylim()[0]
+            else:
+                y_left_int = float(y_left_string)
+
+        except Exception as e:
+            y_left_int = self.parent_container.graph_plot.get_ylim()[0]
+            print (e)
+
+        # Convert text into int: Y Right Limit
+        try:
+            y_right_string = self.y_right_limit_entry.get()
+
+            if y_right_string == '':
+                y_right_int = self.parent_container.graph_plot.get_ylim()[1]
+            else:
+                y_right_int = float(y_right_string)
+
+        except Exception as e:
+            y_right_int = self.parent_container.graph_plot.get_ylim()[1]
+            print (e)
+
+        # Now set the graph to these limits
+        self.parent_container.graph_plot.set_ylim((y_left_int, y_right_int))
+        self.parent_container.graph_plot.set_xlim((x_left_int, x_right_int))
+
+class Channel_Checkbox_Frame(Frame):
+    def __init__(self, parent_container):
+        Frame.__init__(self, parent_container)
+
+        self.parent_container = parent_container
+
+        self.directory_of_channels = {0: IntVar(),
+                                      16: IntVar(),
+                                      32:IntVar(),
+                                      48:IntVar(),
+                                      64:IntVar(),
+                                      80:IntVar(),
+                                      96:IntVar(),
+                                      112:IntVar()}
+
+        Label(self, text = 'Channel Checkboxes').pack(side = TOP, fill = BOTH, expand = True)
+
+        # Create checkbox based on sorted directory of channels keys
+        sorted_directory_of_channels_keys = sorted(self.directory_of_channels.keys())
+        for channel in sorted_directory_of_channels_keys:
+            box = Checkbutton(self, text = str(hex(channel)), variable = self.directory_of_channels[channel])
+            self.directory_of_channels[channel].set(1)
+            box.pack(side = LEFT, fill = BOTH, expand = True)

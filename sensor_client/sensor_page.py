@@ -98,11 +98,13 @@ class Sensor_Scan_Frame(Frame):
                 self.is_scanning = False
 
     def scan_for_devices (self):
+        self.list_box.insert (END, 'Scanning...')
+        sleep(1/2)
         scan_results = ble_scan()
         self.list_box.delete(0, END)
 
         if scan_results is None:
-            self.list_box.insert (END, 'Nothing Found')
+            self.list_box.insert (END, 'Nothing Found. Make Sure Root.')
             return
 
         for address, name in scan_results.items():
@@ -209,8 +211,6 @@ class Sensor_Node_Frame(Frame):
                                  ', hex:' +
                                  str(hex(self.sensor.hv)) +
                                  ' )')
-
-
 
 class Sensor_Settings(Toplevel):
     def __init__(self, parent_container, sensor):
