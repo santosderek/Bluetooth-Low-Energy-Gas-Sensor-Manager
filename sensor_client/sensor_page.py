@@ -11,30 +11,36 @@ from tkinter.filedialog import askopenfilename
 from threading import Thread
 import os
 
+from time import ctime
+
 from sensor_client import *
-from config import LARGE_FONT, NORMAL_FONT
+from config import *
 
 
 class Sensor_Manager_Frame(Frame):
     def __init__(self, parent_container):
         Frame.__init__(self, parent_container)
+        self.parent_container = parent_container
 
         self.scan_frame = Sensor_Scan_Frame(self)
         self.scan_frame.pack(side = TOP, fill = BOTH, expand = False)
 
-        self.sensor_node_frame = Frame(self)
-        self.sensor_node_frame.pack(side = TOP, fill = BOTH, expand = True)
-        self.sensor_node_label = Label (self.sensor_node_frame, text = 'Sensors', font = LARGE_FONT)
-        self.sensor_node_label.pack(side = TOP, fill = BOTH, expand = False)
+        self.sensor_collection_frame = Sensor_Collection_Frame(self)
+        self.sensor_collection_frame.pack(side = TOP, fill = BOTH, expand = True)
 
+class Sensor_Collection_Frame(Frame):
+    def __init__(self, parent_container):
+        Frame.__init__(self, parent_container)
+        self.parent_container = parent_container
+
+        self.sensor_node_label = Label (self, text = 'Sensors', font = LARGE_FONT)
+        self.sensor_node_label.pack(side = TOP, fill = BOTH, expand = False)
         self.list_of_sensor_node_frames = []
 
         #TODO: This is only for testing... Delete
-        self.list_of_sensor_node_frames.append(Sensor_Node_Frame(self.sensor_node_frame, 'Test', 'FD:4E:4D:5B:4D:1B'))
+        self.list_of_sensor_node_frames.append(Sensor_Node_Frame(self, 'Test', 'FD:4E:4D:5B:4D:1B'))
         for s_node in self.list_of_sensor_node_frames:
             s_node.pack(side = TOP, fill = BOTH, expand = False)
-
-
 
     def add_sensor_node(self, passedName):
         name, mac_address = passedName.split ('-')
@@ -45,7 +51,7 @@ class Sensor_Manager_Frame(Frame):
             if sensor.mac_address == mac_address:
                 return
 
-        self.list_of_sensor_node_frames.append(Sensor_Node_Frame(self.sensor_node_frame, name, mac_address))
+        self.list_of_sensor_node_frames.append(Sensor_Node_Frame(self, name, mac_address))
         for s_node in self.list_of_sensor_node_frames:
             s_node.pack(side = TOP, fill = BOTH, expand = False)
 
@@ -61,7 +67,12 @@ class Sensor_Scan_Frame(Frame):
     def __init__(self, parent_container):
         Frame.__init__(self, parent_container)
         self.parent_container = parent_container
+
         self.title_label = Label (self, text = 'Scan', font = LARGE_FONT)
+
+        # Bool to see if device is scanning
+        self.is_scanning = False
+
         self.scan_button_frame = Frame(self)
         self.scan_list_frame = Frame(self)
 
@@ -77,47 +88,54 @@ class Sensor_Scan_Frame(Frame):
         self.scan_button.pack(side = RIGHT, fill = BOTH, expand = True)
         self.add_sensor_node.pack(side = RIGHT, fill = BOTH, expand = True)
 
-        # Bool to see if device is scanning
-        self.is_scanning = False
-
-
+        self.scan_thread = None
 
     def add_sensor(self):
         cursor_selection = self.list_box.curselection()
         if cursor_selection == ():
             return
         listbox_selection = self.list_box.get(cursor_selection)
-        self.parent_container.add_sensor_node(listbox_selection)
+        self.parent_container.sensor_collection_frame.add_sensor_node(listbox_selection)
 
     def new_thread_scan(self):
         if not self.is_scanning:
             try:
-                self.is_scanning = True
-                Thread(target=self.scan_for_devices, args=(), daemon=True).start()
+                self.scan_thread = Thread(target=self.scan_for_devices, args = ())
+                self.scan_thread.start()
 
             except Exception as e:
-                print ('ERROR: New Thread Scan:', e)
+                self.list_box.delete(0, END)
+                self.list_box.insert (END, 'Can not create thread...')
 
-            finally:
-                self.is_scanning = False
 
     def scan_for_devices (self):
-        self.list_box.insert (END, 'Scanning...')
-        sleep(1/2)
-        scan_results = ble_scan()
-        self.list_box.delete(0, END)
+        try:
+            self.is_scanning = True
+            self.list_box.delete(0, END)
+            self.list_box.insert (END, 'Scanning...')
+            sleep(1)
+            scan_results = ble_scan()
+            self.list_box.delete(0, END)
 
-        if scan_results is None:
-            self.list_box.insert (END, 'Nothing Found. Make Sure Root.')
-            return
+            if scan_results is None:
+                self.list_box.insert (END, 'Nothing Found. Make Sure Root.')
+                return
 
-        for address, name in scan_results.items():
-            self.list_box.insert(END, '{} - {}'.format (name, address))
+            for address, name in scan_results.items():
+                self.list_box.insert(END, '{} - {}'.format (name, address))
 
+        except Exception as e:
+            self.list_box.delete(0, END)
+            self.list_box.insert (END, 'Can not complete scan...')
+
+        finally:
+            self.is_scanning = False
 
 class Sensor_Node_Frame(Frame):
     def __init__(self, parent_container, name, mac_address):
         Frame.__init__(self, parent_container)
+
+        self.parent_container = parent_container
 
         self.name = str(name)
         self.mac_address = str(mac_address)
@@ -134,13 +152,16 @@ class Sensor_Node_Frame(Frame):
         self.voltage_var = StringVar()
         self.voltage_var.set('Voltage: ' + str(self.sensor.high_voltage))
 
+        self.sensor_connect_button_stringvar = StringVar()
+        self.sensor_connect_button_stringvar.set('Connect')
+
         self.sensor_name_label = Label(self, textvariable = self.name_string_var)
         self.sensor_connected_label = Label(self, textvariable = self.connected_string_var)
         self.sensor_reading_frequency_label = Label(self, textvariable = self.reading_frequency_string_var)
         self.sensor_reading_resistance_label = Label(self, textvariable = self.reading_resistance_string_var)
         self.sensor_voltage_label = Label(self, textvariable = self.voltage_var)
 
-        self.sensor_connect_button = ttk.Button(self, text = 'Connect', command = self.connect_to_sensor)
+        self.sensor_connect_button = ttk.Button(self, textvariable = self.sensor_connect_button_stringvar, command = self.connect_to_sensor)
         self.sensor_disconnect_button = ttk.Button(self, text = 'Disconnect', command = self.sensor.disconnect)
         self.sensor_read_frequency_button = ttk.Button(self, text = 'Read Frequency', command = self.toggle_reading_frequency)
         self.sensor_read_resistance_button = ttk.Button(self, text = 'Read Resistance', command = self.toggle_reading_resistance)
@@ -173,14 +194,19 @@ class Sensor_Node_Frame(Frame):
 
 
     def change_graph_to_sensor(self):
-        pass
+        path = DIRECTORY_OF_SENSOR_DATA + self.mac_address +' - ' + ctime(self.sensor.start_time) + ' - Frequency.csv'
 
     def show_settings(self):
         settings_child_window = Sensor_Settings(self, self.sensor)
         settings_child_window.grab_set()
 
     def connect_to_sensor(self):
-        self.sensor.connect(connect_once = True)
+        self.sensor_connect_button_stringvar.set('Connecting')
+        sleep(1)
+        self.sensor.connect()
+        self.sensor_connect_button_stringvar.set('Connect')
+
+
 
     def toggle_reading_frequency(self):
         if self.sensor.reading_frequency:
@@ -235,6 +261,9 @@ class Sensor_Settings(Toplevel):
 
 
 class Sensor_Voltage_Frame(Frame):
+
+    # NOTE: self.sensor.high_voltage is just an integer value that is converted from a hex value
+    # Python automatically converts 0xXX to integer values
     def __init__(self, parent_container, sensor):
         Frame.__init__(self, parent_container)
 
@@ -244,11 +273,29 @@ class Sensor_Voltage_Frame(Frame):
         self.voltage_entry = Entry(self)
         self.up_button = Button(self, text = '+5', command = self.add_five)
         self.down_button = Button(self, text = '-5', command = self.subtract_five)
+        self.change_using_entry_button = Button(self, text = 'Apply Voltage', command = self.change_using_entry)
 
         Label (self, text = 'Change Voltage:').pack(side = LEFT, fill = BOTH, expand = False)
         self.voltage_entry.pack(side = LEFT, fill = BOTH, expand = False)
         self.up_button.pack(side = LEFT, fill = BOTH, expand = False)
         self.down_button.pack(side = LEFT, fill = BOTH, expand = False)
+        self.change_using_entry_button.pack(side = LEFT, fill = BOTH, expand = False)
+
+    def change_using_entry(self):
+        try:
+            value = self.voltage_entry.get()
+            if value == '':
+                return
+            if value[:2] == '0x':
+                value_int = int(value, 16)
+            else:
+                self.change_using_entry_button.text = 'Changing...'
+                sleep(1/2)
+                value_int = int(value)
+            self.sensor.change_hv_value(value_int)
+            self.change_using_entry_button.text = 'Apply Voltage'
+        except Exception as e:
+            pass
 
     def add_five(self):
         self.sensor.change_hv_value(self.sensor.high_voltage + 5)

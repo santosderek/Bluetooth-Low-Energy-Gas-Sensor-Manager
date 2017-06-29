@@ -48,20 +48,28 @@ class Main_Window(Tk):
                                     command = self.open_csv_file)
         menubar.add_cascade (label = 'Open CSV File', menu = open_file_menu)
 
-        open_manager_manu = Menu(menubar, tearoff = 0)
-        open_manager_manu.add_command( label = 'Open Graph Manager',
+        open_manager_menu = Menu(menubar, tearoff = 0)
+        open_manager_menu.add_command( label = 'Open Graph Manager',
                                        command = lambda: self.raise_to_front('graph'))
-        open_manager_manu.add_command( label = 'Open Sensor Manager',
+        open_manager_menu.add_command( label = 'Open Sensor Manager',
                                        command = lambda: self.raise_to_front('manager'))
 
-        menubar.add_cascade (label = 'Graph / Sensor', menu = open_manager_manu)
+        menubar.add_cascade (label = 'Graph / Sensor', menu = open_manager_menu)
+
+        baseline_menu = Menu(menubar, tearoff = 0)
+        baseline_menu.add_command( label = 'Change Baseline',
+                                       command = self.open_baseline_child_window)
+
+        menubar.add_cascade (label = 'Baseline', menu = baseline_menu)
 
         Tk.config(self, menu = menubar)
 
         self.raise_to_front('graph')
 
-
         self.graph_thread = None
+
+    def open_baseline_child_window(self):
+        pass
 
     def raise_to_front(self, frame_name):
         if frame_name == 'graph':
@@ -76,28 +84,26 @@ class Main_Window(Tk):
             self.graph_page.file_path = filename
 
     def quit_application(self):
-        self.sensor_manager_page.disconnect_all_sensors()
+        self.sensor_manager_page.sensor_collection_frame.disconnect_all_sensors()
         self.quit()
 
     def run(self):
         self.geometry('1280x720')
         self.protocol("WM_DELETE_WINDOW", self.quit_application)
 
-        self.graph_page.plot_points(reset_zoom = False, loop = False)
+        #self.graph_page.plot_points(reset_zoom = False, loop = False)
         self.graph_page.graph_plot.set_xlim((-1,3000))
         self.graph_page.graph_plot.set_ylim((-1,5))
         anim = FuncAnimation(self.graph_page.graph_figure,
                              self.graph_page.plot_points,
-                             interval = 1000)
+                             interval = 500,
+                             blit = True,
+                             repeat = False)
 
         #self.graph_thread = Thread (target = self.graph_page.plot_points, args=(), daemon=True)
         #self.graph_thread.start()
 
         self.mainloop()
-
-
-
-
 
 if __name__ == '__main__':
     main_window = Main_Window()

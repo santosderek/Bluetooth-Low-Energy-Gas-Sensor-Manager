@@ -29,6 +29,8 @@ from time import sleep, time, ctime
 import bluetooth.ble as bluetooth
 from psycopg2 import *
 
+from config import *
+
 def ble_scan():
     # Scan's for all BLE devices nearby for 5 seconds
     try:
@@ -56,7 +58,7 @@ class Sensor_Client():
             self.connected = False
 
             # If this is set to True then if sensor is not connected, it will try to reconnect
-            self.reconnecting_allowed = False
+            self.reconnecting_allowed = True
 
             # Variable that will be set to true when trying to connect to sensor.
             # Allows all other functions to be aware that we are trying to connect
@@ -107,7 +109,7 @@ class Sensor_Client():
 
     # Function that attempts connection with the sensor
     # connect_one argument is if you only want to try to connect once
-    def connect(self, connect_once = False ):
+    def connect(self):
         # Since under __init__ has already spanwed the startup command
         # we can free-ly send the connect command to try to start a connection
 
@@ -122,49 +124,47 @@ class Sensor_Client():
 
         # While not connected then we must attempt connection until it connects again.
         start_connecting_attempt_time = time()
-        while not self.connected:
-            # Sends the string 'connect' to gatttol
-            self.gtool.sendline('connect')
 
-            try:
-                self.stop_connection_checking = True
-                # If connection was successful we would get 'Connection successful' as output
-                # If connection was unsuccessful we would try again.
-                index = self.gtool.expect(['Connection successful',
-                                           '.*busy.*',
-                                           '.*Too many levels of symbolic links.*',
-                                           '.*refused.*'], timeout = 3)
-                if index == 0:
-                    self.connected = True
-                    #self.change_hv_value(self.high_voltage)
-                    self.stop_connection_checking = False
-                elif index == 1:
-                    print ('Device busy. Trying again')
-                elif index == 2:
-                    print ('Too many levels of symbolic links. Please restart device.')
-                    self.set_to_disconnected()
-                    return 'Too many symbolic links'
-                elif index == 3:
-                    self.set_to_disconnected()
-                    print ('Connection refused. Try again')
+        # Sends the string 'connect' to gatttol
+        self.gtool.sendline('connect')
 
-                if connect_once:
-                    return
-
-            # If pexpect time's out then set everything to disconnected and try again.
-            except pexpect.exceptions.TIMEOUT as timeout:
+        try:
+            self.stop_connection_checking = True
+            # If connection was successful we would get 'Connection successful' as output
+            # If connection was unsuccessful we would try again.
+            index = self.gtool.expect(['Connection successful',
+                                       '.*busy.*',
+                                       '.*Too many levels of symbolic links.*',
+                                       '.*refused.*'], timeout = 3)
+            if index == 0:
+                self.connected = True
+                #self.change_hv_value(self.high_voltage)
+                self.stop_connection_checking = False
+            elif index == 1:
+                print ('Device busy. Trying again')
+            elif index == 2:
+                print ('Too many levels of symbolic links. Please restart device.')
                 self.set_to_disconnected()
-                if connect_once:
-                    return
-                self.connect()
-
-            except pexpect.exceptions.EOF as eof:
-                self.gtool = pexpect.spawnu('sudo gatttool -i hci0 -b {addr} -t random -I'.format(addr = self.address), timeout = 3)
-
-            # If there was an uknown error state the error and try again.
-            except Exception as e:
-                print ('ERROR:', e)
+                return 'Too many symbolic links'
+            elif index == 3:
                 self.set_to_disconnected()
+                #print ('Connection refused. Try again')
+
+        # If pexpect time's out then set everything to disconnected and try again.
+        except pexpect.exceptions.TIMEOUT as timeout:
+            self.set_to_disconnected()
+            self.connect()
+
+        except pexpect.exceptions.EOF as eof:
+            self.gtool = pexpect.spawnu('sudo gatttool -i hci0 -b {addr} -t random -I'.format(addr = self.address), timeout = 3)
+            #self.gtool.logfile = sys.stdout
+
+        # If there was an uknown error state the error and try again.
+        except Exception as e:
+            print ('ERROR:', e)
+            self.set_to_disconnected()
+
+
 
     # When the sensor disconnects, this function will update the class with the
     # correct data assignments
@@ -193,11 +193,12 @@ class Sensor_Client():
         self.stop_connection_checking = True
 
         # Wait 3 seconds to make sure the reading thread has time to stop reading
-        sleep (3)
+        if self.reading_frequency or self.reading_resistance:
+            sleep (3)
         # Send the command to gatttol in order to change the hv
         self.gtool.sendline(self.char_write(0x02, 0x00, self.high_voltage))
         # Sleep for 3 seconds to make sure the command was sent
-        sleep(3)
+        sleep(1/2)
         # Set reading_frequency to what it was before
         self.reading_frequency = old_rc_value
         # Check connection to make sure it is connected
@@ -262,29 +263,33 @@ class Sensor_Client():
             #    # And append it to the frequency_list
             #    self.frequency_list.append(frequency)
 
-            # Append this value and the current time duration to a file
-            # The file name contains the MAC Address, Date/time, and channel
-        dir_path = os.path.dirname(os.path.realpath(__file__))
 
         #for channel, (time_dur, freq) in zip(self.channels, frequencies):
         #    self.update_postgres(self.address, self.start_time, time_dur, freq)
-        with open(dir_path + '/sensor_data/{0} - {1} - Frequency.csv'.format(self.address, ctime(self.start_time)), 'a') as current_file:
+        with open(DIRECTORY_OF_SENSOR_DATA + '{0} - {1} - Frequency.csv'.format(self.address, ctime(self.start_time)), 'a') as current_file:
             for channel, (time_dur, freq) in zip(self.channels, frequencies):
                 data = '{0:02d},{1:5.1f},{2:1.8f},'.format(channel, time_dur, float (frequency))
                 current_file.write(data)
             current_file.write('\n')
 
     def read_resistance(self):
+        # If start_time was not initiated, the start_time is now
         if self.start_time is None:
             self.start_time = time()
+        # Send command to get resistance
         self.gtool.sendline(self.char_write(0x04))
+        # Read in the digital_value
         digital_value = self.read_handle()
+        # Get the time_duration from when the voltage was recorded
+        time_duration = time() - self.start_time
+
         if digital_value is None:
             return
         digital_value = digital_value.replace(' ', '')
-        digital_value = struct.unpack('<I', binascii.unhexlify(digital_value))[0]
+        digital_value_hex = binascii.unhexlify(digital_value)
+        digital_value = struct.unpack('<I', digital_value_hex)[0]
 
-        # dlog = Digital Value
+        # digital_value = Digital Value
         # vref = Voltage value
         #
         voltage_ref = 3.3
@@ -292,12 +297,10 @@ class Sensor_Client():
         vlog = digital_value * vlsb
         vc = 5
         rl = 2.2
-
+        # Calculate resistance
         resistance = (vc - vlog) * rl / vlog
-        time_duration = time() - self.start_time
-        dir_path = os.path.dirname(os.path.realpath(__file__))
 
-        with open(dir_path + '/sensor_data/{0} - {1} - {2}.csv'.format(self.address, ctime(self.start_time), 'Resistance'), 'a') as current_file:
+        with open(DIRECTORY_OF_SENSOR_DATA + '{0} - {1} - {2}.csv'.format(self.address, ctime(self.start_time), 'Resistance'), 'a') as current_file:
             data = '{0:5.1f},{1:5d},{2:5.3f},{3:5.3f}\n'.format(time_duration, digital_value, voltage_ref, float(resistance))
             current_file.write(data)
 
@@ -396,18 +399,18 @@ class Sensor_Client():
                     # We must record the starting time that the sensor is being started
                     self.read_frequency()
 
-                elif self.reading_resistance and self.connected:
+                if self.reading_resistance and self.connected:
                     self.read_resistance()
 
-                elif not self.stop_connection_checking and \
+                if not self.stop_connection_checking and \
                      not self.reading_resistance and \
                      not self.reading_frequency and self.connected:
                     # To check if we are still connected we can read from the sensor
                     self.check_connection()
-                    sleep (3)
-                elif self.reconnecting_allowed:
-                    self.connect(connect_once = True)
-                    sleep(1)
+                    sleep (1)
+                elif self.reconnecting_allowed and not self.connected:
+                    self.connect()
+                    #sleep(1)
                 else:
                     sleep (1)
 

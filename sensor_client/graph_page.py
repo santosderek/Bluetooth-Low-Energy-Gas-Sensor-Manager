@@ -53,13 +53,13 @@ class Graph_Frame(Frame):
 
         self.points_to_plot = []
 
+
         self.graph_settings_frame = Graph_Settings_Frame(self)
         self.graph_settings_frame.pack(side = BOTTOM, fill = BOTH, expand = False)
 
         self.graph_checkbox_frame = Channel_Checkbox_Frame(self)
         self.graph_checkbox_frame.pack(side = BOTTOM, fill = BOTH, expand = False)
-
-
+        self.reset_labels = True
 
     def return_channel_color(self, channel):
         if channel == '64':
@@ -91,45 +91,52 @@ class Graph_Frame(Frame):
 
     def plot_points(self, i = 0, reset_zoom = True, loop = True):
 
-        #while True:
         try:
+            if self.file_path is None:
+                self.graph_figure.suptitle('No File Selected', fontsize=11)
+                return
 
             if reset_zoom:
                 x_axis_zoom = self.graph_plot.get_xlim()
                 y_axis_zoom = self.graph_plot.get_ylim()
 
-            self.graph_plot.clear()
+            if self.reset_labels:
+                self.graph_plot.clear()
+
             mac_address = re.search(r'\w{2}:\w{2}:\w{2}:\w{2}:\w{2}:\w{2}', self.file_path).group(0)
             start_time = re.search(r'\w{3}\s\w{3}\s\d{2}\s\d{2}:\d{2}:\d{2}\s\d{4}', self.file_path).group(0)
-            self.graph_figure.suptitle('Resonant frequency\n{}\n{}'.format(mac_address, start_time), fontsize=11)
-            self.graph_plot.set_ylabel('Frequency (MHz)')
-            self.graph_plot.set_xlabel('Time Duration (Seconds)')
 
             if self.file_path is None:
                 return
             elif self.file_path[-len('Frequency.csv'):] == 'Frequency.csv':
-                self.update_frequency_points()
+                self.graph_figure.suptitle('Resonant frequency\n{}\n{}'.format(mac_address, start_time), fontsize=11)
+                self.graph_plot.set_ylabel('Frequency (MHz)')
+                self.graph_plot.set_xlabel('Time Duration (Seconds)')
+                lines = self.update_frequency_points()
 
             elif self.file_path[-len('Resistance.csv'):] == 'Resistance.csv':
-                self.update_resistance_points()
+                self.graph_figure.suptitle('Resistance\n{}\n{}'.format(mac_address, start_time), fontsize=11)
+                self.graph_plot.set_ylabel('Resistance')
+                self.graph_plot.set_xlabel('Time Duration (Seconds)')
+                lines = self.update_resistance_points()
 
-            handles, labels = self.graph_plot.get_legend_handles_labels()
-            self.graph_plot.legend(handles, labels)
+            if self.reset_labels:
+                handles, labels = self.graph_plot.get_legend_handles_labels()
+                self.graph_plot.legend(handles, labels)
+                self.reset_labels = False
 
             if reset_zoom:
                 self.graph_plot.set_xlim(x_axis_zoom)
                 self.graph_plot.set_ylim(y_axis_zoom)
-            #if not loop:
-            #    return
 
-            #sleep(3)
+            return lines
 
         except Exception as e:
             print ('ERROR: Plot Points:', e)
 
     def update_frequency_points(self, i = 0):
 
-        directory_of_channels = {0:[ [], [] ],
+        directory_of_channels = {0: [ [], [] ],
                                  16:[ [], [] ],
                                  32:[ [], [] ],
                                  48:[ [], [] ],
@@ -137,14 +144,11 @@ class Graph_Frame(Frame):
                                  80:[ [], [] ],
                                  96:[ [], [] ],
                                  112:[ [], [] ]}
-        list_of_line_plots = []
-        list_of_circle_plots = []
+
+        lines = []
 
         with open(self.file_path, 'r') as current_file:
             file_lines = current_file.read().split('\n')
-
-        time_duration_list = []
-        frequency_list = []
 
         for line in list(file_lines):
             line = line.split(',')
@@ -159,29 +163,30 @@ class Graph_Frame(Frame):
                 line.remove('')
 
             for count in range(0, len(line), 3):
-                line_color, circle_color = self.return_channel_color(line[count])
-
                 directory_of_channels[int(line[count])][0].append(line[count + 1])
                 directory_of_channels[int(line[count])][1].append(line[count + 2])
 
-        for channel in directory_of_channels:
+        sorted_directory_of_channels_keys = sorted(directory_of_channels.keys())
+        for number, channel in enumerate(sorted_directory_of_channels_keys):
             if self.graph_checkbox_frame.directory_of_channels[channel].get() == 0:
                 continue
 
-            line_color, circle_color = self.return_channel_color(channel)
-            self.graph_plot.plot(directory_of_channels[channel][0],
+            lines.append ( self.graph_plot.plot(directory_of_channels[channel][0],
                                  directory_of_channels[channel][1],
+                                 LINE_COLORS[number],
                                  marker = 'o',
                                  linestyle = '-',
-                                 label = 'Channel %s' % str(hex(channel)))[0]
+                                 label = 'Channel %s' % number)[0] )
+        return lines
 
     def update_resistance_points(self):
-        current_pos = 0
         with open(self.file_path, 'r') as current_file:
             file_lines = current_file.read().split('\n')
 
         time_duration_list = []
         resistance_list = []
+
+        lines = []
 
         for line in file_lines:
             if len(line) < 2:
@@ -198,10 +203,13 @@ class Graph_Frame(Frame):
             time_duration_list.append (line[0])
             resistance_list.append (line[3])
 
-        self.graph_plot.plot(time_duration_list,
+        lines.append( self.graph_plot.plot(time_duration_list,
                              resistance_list,
                              marker = 'o',
-                             linestyle = '-')
+                             linestyle = '-',
+                             label = 'Resistance')[0] )
+
+        return lines
 
 
 class Graph_Settings_Frame (Frame):
@@ -219,6 +227,7 @@ class Graph_Settings_Frame (Frame):
         x_range_label =  Label (self, text = 'X Range (')
         y_range_label =  Label (self, text = '), Y Range (')
 
+        ###############################################################
         # X RANGE
         x_range_label.pack(side = LEFT, fill = BOTH, expand = True)
         self.x_left_limit_entry.pack( side = LEFT, fill = BOTH, expand = True)
@@ -226,7 +235,9 @@ class Graph_Settings_Frame (Frame):
         Label(self, text = ',').pack(side = LEFT, fill = BOTH, expand = True )
 
         self.x_right_limit_entry.pack(side = LEFT, fill = BOTH, expand = True)
+        ###############################################################
 
+        ###############################################################
         # Y RANGE
         y_range_label.pack(side = LEFT, fill = BOTH, expand = True)
         self.y_left_limit_entry.pack( side = LEFT, fill = BOTH, expand = True)
@@ -236,7 +247,7 @@ class Graph_Settings_Frame (Frame):
         self.y_right_limit_entry.pack(side = LEFT, fill = BOTH, expand = True)
 
         Label(self, text = ')').pack(side = LEFT, fill = BOTH, expand = True)
-
+        ###############################################################
 
         self.change_button = Button (self, text = 'Apply Limits', command = self.update_graph_limits)
         self.change_button.pack (side = LEFT, fill = BOTH, expand = True)
@@ -253,7 +264,6 @@ class Graph_Settings_Frame (Frame):
 
         except Exception as e:
             x_left_int = self.parent_container.graph_plot.get_xlim()[0]
-            print (e)
 
         # Convert text into int: X Right Limit
         try:
@@ -266,7 +276,6 @@ class Graph_Settings_Frame (Frame):
 
         except Exception as e:
             x_right_int = self.parent_container.graph_plot.get_xlim()[1]
-            print (e)
 
         # Convert text into int: Y Left Limit
         try:
@@ -279,7 +288,6 @@ class Graph_Settings_Frame (Frame):
 
         except Exception as e:
             y_left_int = self.parent_container.graph_plot.get_ylim()[0]
-            print (e)
 
         # Convert text into int: Y Right Limit
         try:
@@ -292,7 +300,6 @@ class Graph_Settings_Frame (Frame):
 
         except Exception as e:
             y_right_int = self.parent_container.graph_plot.get_ylim()[1]
-            print (e)
 
         # Now set the graph to these limits
         self.parent_container.graph_plot.set_ylim((y_left_int, y_right_int))
@@ -305,7 +312,7 @@ class Channel_Checkbox_Frame(Frame):
         self.parent_container = parent_container
 
         self.directory_of_channels = {0: IntVar(),
-                                      16: IntVar(),
+                                      16:IntVar(),
                                       32:IntVar(),
                                       48:IntVar(),
                                       64:IntVar(),
@@ -317,7 +324,7 @@ class Channel_Checkbox_Frame(Frame):
 
         # Create checkbox based on sorted directory of channels keys
         sorted_directory_of_channels_keys = sorted(self.directory_of_channels.keys())
-        for channel in sorted_directory_of_channels_keys:
-            box = Checkbutton(self, text = str(hex(channel)), variable = self.directory_of_channels[channel])
+        for number, channel in enumerate(sorted_directory_of_channels_keys):
+            box = Checkbutton(self, text = str(number), variable = self.directory_of_channels[channel])
             self.directory_of_channels[channel].set(1)
             box.pack(side = LEFT, fill = BOTH, expand = True)

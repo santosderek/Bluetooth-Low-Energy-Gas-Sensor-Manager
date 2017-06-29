@@ -5,6 +5,7 @@ DIRECTORY_OF_SENSOR_DATA = DIRECTORY_OF_FILE + '/sensor_data/'
 LARGE_FONT = ("Verdana", 18)
 NORMAL_FONT = ("Verdana", 12)
 
+LINE_COLORS = ['b', 'g', 'r', 'y', 'c', 'm', 'k','#FF5733','#C70039']
 
 database_name = 'postgres'
 database_user = 'postgres'
