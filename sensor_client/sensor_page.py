@@ -165,7 +165,6 @@ class Sensor_Node_Frame(Frame):
         self.sensor_disconnect_button = ttk.Button(self, text = 'Disconnect', command = self.sensor.disconnect)
         self.sensor_read_frequency_button = ttk.Button(self, text = 'Read Frequency', command = self.toggle_reading_frequency)
         self.sensor_read_resistance_button = ttk.Button(self, text = 'Read Resistance', command = self.toggle_reading_resistance)
-        self.sensor_show_on_graph_button = ttk.Button(self, text = 'Show On Graph', command = self.change_graph_to_sensor)
         self.sensor_settings_button = ttk.Button(self, text = 'Settings', command = self.show_settings)
 
         self.sensor_connected_label.config (fg = 'red')
@@ -182,7 +181,6 @@ class Sensor_Node_Frame(Frame):
         self.sensor_disconnect_button.pack(side = LEFT, fill = BOTH, expand = True)
         self.sensor_read_frequency_button.pack(side = LEFT, fill = BOTH, expand = True)
         self.sensor_read_resistance_button.pack(side = LEFT, fill = BOTH, expand = True)
-        self.sensor_show_on_graph_button.pack(side = LEFT, fill = BOTH, expand = True)
         self.sensor_settings_button.pack(side = LEFT, fill = BOTH, expand = True)
 
         # Creation of update_labels thread
@@ -190,11 +188,6 @@ class Sensor_Node_Frame(Frame):
                                            args = (),
                                            daemon=True)
         self.update_labels_thread.start()
-
-
-
-    def change_graph_to_sensor(self):
-        path = DIRECTORY_OF_SENSOR_DATA + self.mac_address +' - ' + ctime(self.sensor.start_time) + ' - Frequency.csv'
 
     def show_settings(self):
         settings_child_window = Sensor_Settings(self, self.sensor)
@@ -237,11 +230,9 @@ class Sensor_Node_Frame(Frame):
             else:
                 self.sensor_reading_resistance_label.config(fg = 'red')
 
-            self.voltage_var.set('Voltage( int:' +
-                                 str(self.sensor.high_voltage) +
-                                 ', hex:' +
-                                 str(hex(self.sensor.high_voltage)) +
-                                 ' )')
+            converted_voltage = get_voltage_out(self.sensor.high_voltage, self.sensor.R2, self.sensor.ROFF)
+            self.voltage_var.set('Voltage[ int:' + str(self.sensor.high_voltage) +
+                                 ' | %.3f V' % converted_voltage + ' ]')
 
 class Sensor_Settings(Toplevel):
     def __init__(self, parent_container, sensor):

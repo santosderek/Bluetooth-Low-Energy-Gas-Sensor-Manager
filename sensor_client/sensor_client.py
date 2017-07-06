@@ -4,7 +4,7 @@
 
 """
 
-Hexadecimal Valued Access Codes:
+Hexadecimal Valued BLE Handle Codes:
 
 0x02: HVPOT
 0x03: LVPOT
@@ -27,7 +27,6 @@ import binascii
 from threading import Thread
 from time import sleep, time, ctime
 import bluetooth.ble as bluetooth
-from psycopg2 import *
 
 from config import *
 
@@ -40,6 +39,15 @@ def ble_scan():
 
     except RuntimeError as e:
         return None
+
+# Returns the voltage using the digital integer value
+def get_voltage_out(digital_int_value, R2, ROFF):
+    return 1.24 * (1 + (R2 / (dtap_to_rhvpot(digital_int_value) + ROFF) ) )
+
+def dtap_to_rhvpot(digital_int_value):
+    # Result is returned in Kili-Ohm
+    return digital_int_value * (100 / 127)
+
 
 class Sensor_Client():
     def __init__(self, ADDRESS):
@@ -90,6 +98,10 @@ class Sensor_Client():
 
             # Default HV value being used at the start of recording data
             self.high_voltage = 0x50
+
+            self.R2 = 1000
+
+            self.ROFF = 50
 
             self.frequency_average = None
             self.frequency_list = []
@@ -153,7 +165,7 @@ class Sensor_Client():
         # If pexpect time's out then set everything to disconnected and try again.
         except pexpect.exceptions.TIMEOUT as timeout:
             self.set_to_disconnected()
-            self.connect()
+            #self.connect()
 
         except pexpect.exceptions.EOF as eof:
             self.gtool = pexpect.spawnu('sudo gatttool -i hci0 -b {addr} -t random -I'.format(addr = self.address), timeout = 3)
@@ -304,22 +316,7 @@ class Sensor_Client():
             data = '{0:5.1f},{1:5d},{2:5.3f},{3:5.3f}\n'.format(time_duration, digital_value, voltage_ref, float(resistance))
             current_file.write(data)
 
-    def update_postgres(self, mac_address, start_time, time_duration, frequency):
-        connection = connect (dbname = database_name,
-                              user=database_user,
-                              password=database_password,
-                              host=database_host_ip,
-                              port=database_port)
-        cursor = connection.cursor()
-        insert_command = "INSERT INTO frequency_values VALUES ('{mac_add}','{s_time}','{time_dur}','{freq}');"
-        insert_command.format(mac_add = mac_address,
-                              s_time = start_time,
-                              time_dur = time_duration,
-                              frequency = frequency)
-        cursor.execute(insert_command)
-        connection.commit()
-        cursor.close()
-        connection.close()
+
 
     # To calculate the frequency_average we take the average of frequency_list
     # But it will only do the latest 5 items
@@ -410,7 +407,7 @@ class Sensor_Client():
                     sleep (1)
                 elif self.reconnecting_allowed and not self.connected:
                     self.connect()
-                    #sleep(1)
+                    sleep(3)
                 else:
                     sleep (1)
 
