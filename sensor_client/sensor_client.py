@@ -3,42 +3,45 @@
 #######################################################################
 
 """
-
 Hexadecimal Valued BLE Handle Codes:
 
 0x02: HVPOT
 0x03: LVPOT
 0x04: IC
 0x05: Gate Time
-
-
-
 """
 
+#TODO: I THINK WHEN GATTOL FAILS IT DOES NOT LET SCANNING WORK
 
-# NOTE: MUST sudo apt-get install libpq-dev for importing psycopg2 | linux only
 
 
-import pexpect
+# Python Modules
 import sys
 import os
 import struct
 import binascii
-from threading import Thread
 from time import sleep, time, ctime
-import bluetooth.ble as bluetooth
+from threading import Thread
 
+# 3rd Party Modules
+from gattlib import DiscoveryService
+import pexpect
+
+# Developer Modules
 from config import *
 
 def ble_scan():
     # Scan's for all BLE devices nearby for 5 seconds
     try:
-        service = bluetooth.DiscoveryService()
-        nearby_devices = service.discover(5)
+        service = DiscoveryService("hci0")
+        nearby_devices = service.discover(2)
         return nearby_devices
 
     except RuntimeError as e:
+        print('ERROR:', e)
         return None
+    except Exception as e:
+        print('ERROR: Exception:', e)
 
 # Returns the voltage using the digital integer value
 def get_voltage_out(digital_int_value, R2, ROFF):
@@ -66,7 +69,7 @@ class Sensor_Client():
             self.connected = False
 
             # If this is set to True then if sensor is not connected, it will try to reconnect
-            self.reconnecting_allowed = True
+            self.reconnecting_allowed = False
 
             # Variable that will be set to true when trying to connect to sensor.
             # Allows all other functions to be aware that we are trying to connect
@@ -93,22 +96,21 @@ class Sensor_Client():
             # Variable for the amout of time per bit
             time_per_bit = 1000 # in us
 
+            self.reading_environment = False
+
             # Calculation for the total time we must request each frequency to be in sync with the sensor
-            self.time_per_bit_delay = time_per_bit * 4 * 8.0 * (1/1000000.0)
+            #self.time_per_bit_delay = time_per_bit * 4 * 8.0 * (1/1000000.0)
 
             # Default HV value being used at the start of recording data
             self.high_voltage = 0x50
-
             self.R2 = 1000
-
             self.ROFF = 50
 
             self.frequency_average = None
             self.frequency_list = []
 
             # Creation of the run thread
-            self.run_thread = Thread(target=self.run, args=())
-            self.run_thread.daemon = True
+            self.run_thread = Thread(target=self.run, daemon = True, args=())
             self.run_thread.start()
 
         except Exception as e:
@@ -182,8 +184,8 @@ class Sensor_Client():
     # correct data assignments
     def set_to_disconnected(self):
         self.connected = False
-        self.reading_frequency = False
-        self.stop_connection_checking = False
+        #self.reading_frequency = False
+        #self.stop_connection_checking = False
 
     # Changes the hv value if the sensor is connected
     def change_hv_value(self, value):
@@ -239,13 +241,13 @@ class Sensor_Client():
             self.gtool.sendline(self.gate_time_write(0x05, self.gate_time))
 
             # Sleep for the total time of the sensor's gate time
-            sleep(self.time_per_bit_delay)
+            #sleep(self.time_per_bit_delay)
             sleep(self.gate_time / 1000.0)
 
             # Request the frequency data
             self.gtool.sendline(self.char_write(0x04, 0x08, 0x04))
-            sleep(self.time_per_bit_delay)
-
+            #sleep(self.time_per_bit_delay)
+            sleep(0.08)
             # To get the Frequency we have to take out the word 'descriptor' with the space at the end
             frequency = self.read_handle()
             if frequency is None:
@@ -259,26 +261,9 @@ class Sensor_Client():
             frequency = float(count) / float(2) / (self.gate_time / 1000.0) / 1000000.0
             frequencies.append((time() - self.start_time, frequency))
 
-            # If the list of frequency data that we have has values within itself
-            #if len(self.frequency_list) > 0:
-            #    # Check if the frequency is within acceptable range
-
-            #    if self.check_frequency(frequency):
-            #        # Append if acceptable
-            #        self.frequency_list.append(frequency)
-            #    # If not acceptable then skip writing it to the file
-            #    else:
-            #        continue
-
-            #else:
-            #    # If it is the first element then automatically put it within the file
-            #    # And append it to the frequency_list
-            #    self.frequency_list.append(frequency)
-
-
-        #for channel, (time_dur, freq) in zip(self.channels, frequencies):
-        #    self.update_postgres(self.address, self.start_time, time_dur, freq)
-        with open(DIRECTORY_OF_SENSOR_DATA + '{0} - {1} - Frequency.csv'.format(self.address, ctime(self.start_time)), 'a') as current_file:
+        file_name = '{0} - {1} - Frequency.csv'.format(self.address, ctime(self.start_time))
+        file_name = file_name.replace(':', '_')
+        with open(DIRECTORY_OF_SENSOR_DATA + file_name, 'a') as current_file:
             for channel, (time_dur, freq) in zip(self.channels, frequencies):
                 data = '{0:02d},{1:5.1f},{2:1.8f},'.format(channel, time_dur, float (frequency))
                 current_file.write(data)
@@ -290,6 +275,7 @@ class Sensor_Client():
             self.start_time = time()
         # Send command to get resistance
         self.gtool.sendline(self.char_write(0x04))
+        sleep(0.1)
         # Read in the digital_value
         digital_value = self.read_handle()
         # Get the time_duration from when the voltage was recorded
@@ -312,11 +298,70 @@ class Sensor_Client():
         # Calculate resistance
         resistance = (vc - vlog) * rl / vlog
 
-        with open(DIRECTORY_OF_SENSOR_DATA + '{0} - {1} - {2}.csv'.format(self.address, ctime(self.start_time), 'Resistance'), 'a') as current_file:
+        file_name = '{0} - {1} - {2}.csv'.format(self.address, ctime(self.start_time),'Resistance')
+        file_name = file_name.replace(':', '_')
+        with open(DIRECTORY_OF_SENSOR_DATA + file_name, 'a') as current_file:
             data = '{0:5.1f},{1:5d},{2:5.3f},{3:5.3f}\n'.format(time_duration, digital_value, voltage_ref, float(resistance))
             current_file.write(data)
 
 
+    def read_temperature(self):
+        if self.start_time is None:
+            self.start_time = time()
+
+        time_duration = time() - self.start_time
+        self.gtool.sendline( self.char_write(6) )
+        sleep(0.1)
+        temp = self.read_handle()
+        if temp is None:
+            return
+        temp = temp.replace(' ','')
+
+        # Data transfered is little-edian. Convert the HEX to ASCII then INT
+        temperature_float = struct.unpack('<f', binascii.unhexlify(temp))[0]
+
+        return (time_duration, temperature_float)
+
+        #file_name = '{0} - {1} - {2}.csv'.format(self.address, ctime(self.start_time),'Temperature')
+        #file_name = file_name.replace(':','_')
+        #with open(DIRECTORY_OF_SENSOR_DATA + file_name,'a') as current_file:
+        #    current_file.write('{0:0.4f},{1:5.1f}\n'.format(time_duration, temperature_float))
+
+
+
+    def read_pressure(self):
+        if self.start_time is None:
+            self.start_time = time()
+
+        time_duration = time() - self.start_time
+        self.gtool.sendline( self.char_write(7) )
+        sleep(0.1)
+        press = self.read_handle()
+        if press is None:
+            return
+        press = press.replace(' ','')
+
+        # Data transfered is little-edian. Convert the HEX to ASCII then INT
+        pressure_float = struct.unpack('<f', binascii.unhexlify(press))[0]
+
+        return (time_duration, pressure_float)
+
+    def read_humidity(self):
+        if self.start_time is None:
+            self.start_time = time()
+
+        time_duration = time() - self.start_time
+        self.gtool.sendline( self.char_write(8) )
+        sleep(0.1)
+        humid = self.read_handle()
+        if humid is None:
+            return
+        humid = humid.replace(' ','')
+
+        # Data transfered is little-edian. Convert the HEX to ASCII then INT
+        humidity_float = struct.unpack('<f', binascii.unhexlify(humid))[0]
+
+        return (time_duration, humidity_float)
 
     # To calculate the frequency_average we take the average of frequency_list
     # But it will only do the latest 5 items
@@ -366,7 +411,7 @@ class Sensor_Client():
                 pass
 
         except pexpect.exceptions.TIMEOUT as t:
-            pass
+            return
 
         except Exception as e:
             print ('ERROR:', e)
@@ -399,6 +444,19 @@ class Sensor_Client():
                 if self.reading_resistance and self.connected:
                     self.read_resistance()
 
+                if self.reading_environment and self.connected:
+                    temperature_tuple = self.read_temperature()
+                    pressure_tuple = self.read_pressure()
+                    humidity_tuple = self.read_humidity()
+
+                    file_name = '{0} - {1} - {2}.csv'.format(self.address, ctime(self.start_time),'Environment')
+                    file_name = file_name.replace(':','_')
+
+                    with open(DIRECTORY_OF_SENSOR_DATA + file_name,'a') as current_file:
+                        current_file.write('{0:5.4f},{1:1.8f},'.format(*temperature_tuple))
+                        current_file.write('{0:5.4f},{1:5.2f},'.format(pressure_tuple[0],pressure_tuple[1]))
+                        current_file.write('{0:5.4f},{1:5.2f}\n'.format(humidity_tuple[0], humidity_tuple[1]))
+
                 if not self.stop_connection_checking and \
                      not self.reading_resistance and \
                      not self.reading_frequency and self.connected:
@@ -417,4 +475,4 @@ class Sensor_Client():
     def disconnect(self):
         self.set_to_disconnected()
         sleep(1)
-        self.gtool.sendline('exit')
+        self.gtool.sendline('disconnect')

@@ -33,11 +33,12 @@ class Sensor_Collection_Frame(Frame):
         Frame.__init__(self, parent_container)
         self.parent_container = parent_container
 
-        Label (self, text = 'Sensors', font = LARGE_FONT).pack(side = TOP, fill = BOTH, expand = False)
+        self.sensor_node_label = Label (self, text = 'Sensors', font = LARGE_FONT)
+        self.sensor_node_label.pack(side = TOP, fill = BOTH, expand = False)
         self.list_of_sensor_node_frames = []
 
         #TODO: This is only for testing... Delete
-        self.list_of_sensor_node_frames.append(Sensor_Node_Frame(self, '', 'FD:4E:4D:5B:4D:1B'))
+        self.list_of_sensor_node_frames.append(Sensor_Node_Frame(self, 'Test', 'FD:4E:4D:5B:4D:1B'))
         for s_node in self.list_of_sensor_node_frames:
             s_node.pack(side = TOP, fill = BOTH, expand = False)
 
@@ -100,6 +101,7 @@ class Sensor_Scan_Frame(Frame):
         if not self.is_scanning:
             try:
                 self.scan_thread = Thread(target=self.scan_for_devices, args = ())
+                print('here')
                 self.scan_thread.start()
 
             except Exception as e:
@@ -109,6 +111,7 @@ class Sensor_Scan_Frame(Frame):
 
     def scan_for_devices (self):
         try:
+            print('here')
             self.is_scanning = True
             self.list_box.delete(0, END)
             self.list_box.insert (END, 'Scanning...')
@@ -150,8 +153,6 @@ class Sensor_Node_Frame(Frame):
         self.reading_resistance_string_var.set('Reading Resistance')
         self.voltage_var = StringVar()
         self.voltage_var.set('Voltage: ' + str(self.sensor.high_voltage))
-        self.reading_environment_string_var = StringVar()
-        self.reading_environment_string_var.set('Reading Environment')
 
         self.sensor_connect_button_stringvar = StringVar()
         self.sensor_connect_button_stringvar.set('Connect')
@@ -160,14 +161,12 @@ class Sensor_Node_Frame(Frame):
         self.sensor_connected_label = Label(self, textvariable = self.connected_string_var)
         self.sensor_reading_frequency_label = Label(self, textvariable = self.reading_frequency_string_var)
         self.sensor_reading_resistance_label = Label(self, textvariable = self.reading_resistance_string_var)
-        self.sensor_reading_environment_label = Label(self, textvariable = self.reading_environment_string_var)
         self.sensor_voltage_label = Label(self, textvariable = self.voltage_var)
 
         self.sensor_connect_button = ttk.Button(self, textvariable = self.sensor_connect_button_stringvar, command = self.connect_to_sensor)
         self.sensor_disconnect_button = ttk.Button(self, text = 'Disconnect', command = self.sensor.disconnect)
         self.sensor_read_frequency_button = ttk.Button(self, text = 'Read Frequency', command = self.toggle_reading_frequency)
         self.sensor_read_resistance_button = ttk.Button(self, text = 'Read Resistance', command = self.toggle_reading_resistance)
-        self.sensor_environment_button = ttk.Button(self, text = 'Read Environment', command = self.toogle_read_environment)
         self.sensor_settings_button = ttk.Button(self, text = 'Settings', command = self.show_settings)
 
         self.sensor_connected_label.config (fg = 'red')
@@ -178,14 +177,12 @@ class Sensor_Node_Frame(Frame):
         self.sensor_connected_label.pack(side = LEFT, fill = BOTH, expand = True)
         self.sensor_reading_frequency_label.pack(side = LEFT, fill = BOTH, expand = True)
         self.sensor_reading_resistance_label.pack(side = LEFT, fill = BOTH, expand = True)
-        self.sensor_reading_environment_label.pack(side = LEFT, fill = BOTH, expand = True)
         self.sensor_voltage_label.pack(side = LEFT, fill = BOTH, expand = True)
 
         self.sensor_connect_button.pack(side = LEFT, fill = BOTH, expand = True)
         self.sensor_disconnect_button.pack(side = LEFT, fill = BOTH, expand = True)
         self.sensor_read_frequency_button.pack(side = LEFT, fill = BOTH, expand = True)
         self.sensor_read_resistance_button.pack(side = LEFT, fill = BOTH, expand = True)
-        self.sensor_environment_button.pack(side = LEFT, fill = BOTH, expand = True)
         self.sensor_settings_button.pack(side = LEFT, fill = BOTH, expand = True)
 
         # Creation of update_labels thread
@@ -218,12 +215,6 @@ class Sensor_Node_Frame(Frame):
         else:
             self.sensor.reading_resistance = True
 
-    def toogle_read_environment(self):
-        if self.sensor.reading_environment:
-            self.sensor.reading_environment = False
-        else:
-            self.sensor.reading_environment = True
-
     def update_labels(self):
         while True:
             if self.sensor.connected:
@@ -241,10 +232,6 @@ class Sensor_Node_Frame(Frame):
             else:
                 self.sensor_reading_resistance_label.config(fg = 'red')
 
-            if self.sensor.reading_environment:
-                self.sensor_reading_environment_label.config(fg = 'green')
-            else:
-                self.sensor_reading_environment_label.config(fg = 'red')
             converted_voltage = get_voltage_out(self.sensor.high_voltage, self.sensor.R2, self.sensor.ROFF)
             self.voltage_var.set('Voltage[ int:' + str(self.sensor.high_voltage) +
                                  ' | %.3f V' % converted_voltage + ' ]')
