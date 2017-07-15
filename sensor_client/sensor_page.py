@@ -15,6 +15,7 @@ from time import ctime
 
 from sensor_client import *
 from config import *
+from hcitool import *
 
 
 class Sensor_Manager_Frame(Frame):
@@ -112,7 +113,10 @@ class Sensor_Scan_Frame(Frame):
             self.is_scanning = True
             self.list_box.delete(0, END)
             self.list_box.insert (END, 'Scanning...')
-            scan_results = ble_scan()
+            #scan_results = ble_scan()
+            hcitool = HCITOOL()
+            scan_results = hcitool.read_output()
+
             print(scan_results)
             self.list_box.delete(0, END)
 
@@ -120,12 +124,16 @@ class Sensor_Scan_Frame(Frame):
                 self.list_box.insert (END, 'Nothing Found. Make Sure Root.')
                 return
 
-            for address, name in scan_results.items():
-                self.list_box.insert(END, '{} - {}'.format (name, address))
+            # The first line is always 'Scanning...'
+            for line in scan_results[1:]:
+                
+                line = line.split(' ')
+                self.list_box.insert(END, '{} - {}'.format (line[1], line[0]))
 
         except Exception as e:
             self.list_box.delete(0, END)
             self.list_box.insert (END, 'Can not complete scan...')
+            print('ERROR: Scanning:', e)
 
         finally:
             self.is_scanning = False
