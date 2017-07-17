@@ -27,10 +27,6 @@ class HCITOOL():
 
         self.list_of_lines.append(string_to_compare)
 
-
-
-
-
     def read_output(self):
 
         try:

@@ -24,12 +24,24 @@ from time import sleep, time, ctime
 from threading import Thread
 
 # 3rd Party Modules
+from gattlib import DiscoveryService
 import pexpect
 
 # Developer Modules
 from config import *
 
+def ble_scan():
+    # Scan's for all BLE devices nearby for 5 seconds
+    try:
+        service = DiscoveryService("hci0")
+        nearby_devices = service.discover(2)
+        return nearby_devices
 
+    except RuntimeError as e:
+        print('ERROR:', e)
+        return None
+    except Exception as e:
+        print('ERROR: Exception:', e)
 
 # Returns the voltage using the digital integer value
 def get_voltage_out(digital_int_value, R2, ROFF):
@@ -309,6 +321,13 @@ class Sensor_Client():
         temperature_float = struct.unpack('<f', binascii.unhexlify(temp))[0]
 
         return (time_duration, temperature_float)
+
+        #file_name = '{0} - {1} - {2}.csv'.format(self.address, ctime(self.start_time),'Temperature')
+        #file_name = file_name.replace(':','_')
+        #with open(DIRECTORY_OF_SENSOR_DATA + file_name,'a') as current_file:
+        #    current_file.write('{0:0.4f},{1:5.1f}\n'.format(time_duration, temperature_float))
+
+
 
     def read_pressure(self):
         if self.start_time is None:
