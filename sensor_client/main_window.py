@@ -1,68 +1,191 @@
-# 3rd Party Modules
-import matplotlib
-matplotlib.use('TkAgg')
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
-from matplotlib.figure import Figure
-from matplotlib.animation import FuncAnimation
+from PyQt5.QtWidgets import QApplication, QLabel, QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QListWidget
+from PyQt5.QtCore import QThread
 
-# Python Modules
-from tkinter import *
-from tkinter import ttk
-from tkinter.filedialog import askopenfilename
+from sensor import *
 
-# Developer Modules
-from graph_page import *
-from sensor_page import *
-from config import *
+class Sensor_Control_Panel_Widget(QWidget):
+    def __init__(self, parent_widget):
+        QWidget.__init__(self, parent = parent_widget)
 
-# Base Tk class that will be used for the application
-class Main_Window(Tk):
+        self.vertical_box = QVBoxLayout()
+        self.vertical_box.addStretch(1)
 
-    def __init__(self, *args, **kwargs):
-        # Initializing inherited Tk Class
-        Tk.__init__(self, *args, **kwargs)
-        Tk.wm_title(self, 'Live Sensor GUI')
+        self.list_of_sensor_widgets = []
 
-        # Creation of a base frame to place the different pages onto
-        main_frame = Frame(self)
-        main_frame.pack( side = TOP, fill = BOTH, expand = True )
-        main_frame.grid_rowconfigure(0, weight = 1 )
-        main_frame.grid_columnconfigure(0, weight = 1 )
+        self.setLayout(self.vertical_box)
 
-        #Creating the Sensor_Manager_Frame page
-        self.sensor_manager_page = Sensor_Manager_Frame(main_frame)
-        self.sensor_manager_page.grid (row = 0, column = 0, sticky = 'nsew')
+    def add_sensor(self, name, mac_address):
+        for temp_sensor in self.list_of_sensor_widgets:
+            if temp_sensor.mac_address == mac_address:
+                return
+        sensor = Sensor_Frame(self, name, mac_address)
+        sensor.show()
+        self.list_of_sensor_widgets.append(sensor)
+        self.vertical_box.addWidget(sensor)
 
-        # Initializing Variables
-        self.file_name = None
-        self.raise_to_front('manager')
+    def show_widget(self):
+        self.show()
 
-        # Creation of the object each thread will be put in
-        self.update_points_thread = None
+class Scan_Widget(QWidget):
+    def __init__(self, parent_widget, sensor_control_panel):
+        QWidget.__init__(self, parent = parent_widget)
 
-    def open_baseline_child_window(self):
-        pass
+        scanning_horizontal_box = QHBoxLayout()
+        scanning_horizontal_box.addStretch(1)
 
-    # Raises the currently selected page to the top of the application
-    def raise_to_front(self, frame_name):
-        if frame_name == 'manager':
-            self.sensor_manager_page.tkraise()
+        self.sensor_control_panel = sensor_control_panel
 
-    # Function that will be used to destroy all sensors before quitting the application
-    def quit_application(self):
-        self.sensor_manager_page.sensor_collection_frame.disconnect_all_sensors()
-        self.quit()
+        self.list_widget = QListWidget(self)
+        self.list_widget.show()
 
-    # The main function that will be used to start the Application
-    def run(self):
-        # Sets the Application to 720p
-        self.geometry('1350x720')
-        # Sets the 'quit_application' function to run before quitting the application
-        self.protocol("WM_DELETE_WINDOW", self.quit_application)
+        self.scan_button = QPushButton('Scan', self)
+        self.scan_button.clicked.connect(self.scan)
+        self.scan_button.show()
+
+        self.add_sensor_button = QPushButton('Add Sensor', self)
+        self.add_sensor_button.clicked.connect(self.add_selected_sensor)
+        self.add_sensor_button.show()
+
+        scanning_horizontal_box.addWidget(self.list_widget)
+        scanning_horizontal_box.addWidget(self.scan_button)
+        scanning_horizontal_box.addWidget(self.add_sensor_button)
+
+        self.setLayout(scanning_horizontal_box)
 
 
-        self.mainloop()
+    def scan(self):
+        list_of_devices = scan_for_nearby_ble_devices()
+        self.list_widget.clear()
 
-if __name__ == '__main__':
-    main_window = Main_Window()
-    main_window.run()
+        for device in list_of_devices:
+            text = '{}---{}'.format(device['name'], device['address'])
+            self.list_widget.addItem(text)
+
+    def add_selected_sensor(self):
+        if self.list_widget.currentItem() is None:
+            return
+        line = self.list_widget.currentItem().text()
+        name, address = line.split('---')
+
+        self.sensor_control_panel.add_sensor(name, address)
+
+    def show_widget(self):
+        self.show()
+
+class Sensor_Frame(QWidget):
+    def __init__(self, parent_widget,  name, mac_address):
+        QWidget.__init__(self, parent = parent_widget)
+
+        self.name = name
+        self.mac_address = mac_address
+        self.sensor = Sensor(name, mac_address)
+        self.sensor.start()
+
+        self.name_label = QLabel(self.name, self)
+        self.mac_address_label = QLabel(self.mac_address, self)
+
+        self.name_label.show()
+        self.mac_address_label.show()
+
+        self.connect_button = QPushButton('Connect', self)
+        self.read_frquency_button = QPushButton('Read Frequency', self)
+        self.read_resistance_button = QPushButton('Read Resistance', self)
+        self.read_temperature_button = QPushButton('Read Temperature', self)
+        self.read_pressure_button = QPushButton('Read Pressure', self)
+        self.read_humidity_button = QPushButton('Read Humidity', self)
+
+        self.connect_button.setStyleSheet("background-color:rgb(255, 0, 0)")
+        self.read_frquency_button.setStyleSheet("background-color:rgb(255, 0, 0)")
+        self.read_resistance_button.setStyleSheet("background-color:rgb(255, 0, 0)")
+        self.read_temperature_button.setStyleSheet("background-color:rgb(255, 0, 0)")
+        self.read_pressure_button.setStyleSheet("background-color:rgb(255, 0, 0)")
+        self.read_humidity_button.setStyleSheet("background-color:rgb(255, 0, 0)")
+
+        self.read_frquency_button.clicked.connect(self.toogle_frequency)
+        self.read_resistance_button.clicked.connect(self.toogle_resistance)
+        self.read_temperature_button.clicked.connect(self.toogle_temperature)
+        self.read_pressure_button.clicked.connect(self.toogle_pressure)
+        self.read_humidity_button.clicked.connect(self.toogle_humidity)
+
+        self.connect_button.show()
+        self.read_frquency_button.show()
+        self.read_resistance_button.show()
+        self.read_temperature_button.show()
+        self.read_pressure_button.show()
+        self.read_humidity_button.show()
+
+        horizontal_box = QHBoxLayout()
+        horizontal_box.addWidget(self.name_label)
+        horizontal_box.addWidget(self.mac_address_label)
+        horizontal_box.addWidget(self.connect_button)
+        horizontal_box.addWidget(self.read_frquency_button)
+        horizontal_box.addWidget(self.read_resistance_button)
+        horizontal_box.addWidget(self.read_temperature_button)
+        horizontal_box.addWidget(self.read_pressure_button)
+        horizontal_box.addWidget(self.read_humidity_button)
+
+        self.setLayout(horizontal_box)
+
+
+    def toogle_frequency(self):
+        if self.sensor.record_frequency:
+            self.sensor.record_frequency = False
+            self.read_frquency_button.setStyleSheet("background-color:rgb(255, 0, 0)")
+        else:
+            self.sensor.record_frequency = True
+            self.read_frquency_button.setStyleSheet("background-color:rgb(0, 255, 0)")
+
+
+    def toogle_resistance(self):
+        if self.sensor.record_resistance:
+            self.sensor.record_resistance = False
+            self.read_resistance_button.setStyleSheet("background-color:rgb(255, 0, 0)")
+        else:
+            self.sensor.record_resistance = True
+            self.read_resistance_button.setStyleSheet("background-color:rgb(0, 255, 0)")
+
+    def toogle_temperature(self):
+        if self.sensor.record_temperature:
+            self.sensor.record_temperature = False
+            self.read_temperature_button.setStyleSheet("background-color:rgb(255, 0, 0)")
+        else:
+            self.sensor.record_temperature = True
+            self.read_temperature_button.setStyleSheet("background-color:rgb(0, 255, 0)")
+
+    def toogle_pressure(self):
+        if self.sensor.record_pressure:
+            self.sensor.record_pressure = False
+            self.read_pressure_button.setStyleSheet("background-color:rgb(255, 0, 0)")
+        else:
+            self.sensor.record_pressure = True
+            self.read_pressure_button.setStyleSheet("background-color:rgb(0, 255, 0)")
+
+    def toogle_humidity(self):
+        if self.sensor.record_humidity:
+            self.sensor.record_humidity = False
+            self.read_humidity_button.setStyleSheet("background-color:rgb(255, 0, 0)")
+        else:
+            self.sensor.record_humidity = True
+            self.read_humidity_button.setStyleSheet("background-color:rgb(0, 255, 0)")
+
+class Sensor_Manager_Widget(QWidget):
+    def __init__(self):
+        super().__init__()
+
+        control_panel_widget = Sensor_Control_Panel_Widget(self)
+        control_panel_widget.show()
+
+
+        scan_widget = Scan_Widget(self, control_panel_widget)
+        scan_widget.show()
+
+
+
+        vertical_layout_box = QVBoxLayout()
+        vertical_layout_box.addStretch(1)
+
+        vertical_layout_box.addWidget(scan_widget)
+        vertical_layout_box.addWidget(control_panel_widget)
+
+
+        self.setLayout(vertical_layout_box)
