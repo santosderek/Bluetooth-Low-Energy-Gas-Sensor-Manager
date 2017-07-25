@@ -26,12 +26,20 @@ except pygatt.exceptions.NotConnectedError:
         except Exception as e:
             print(e)
 
+
+# Returns the voltage using the digital integer value
+def get_voltage_out(digital_int_value, R2, ROFF):
+    print(digital_int_value)
+    return 1.24 * (1 + (R2 / (dtap_to_rhvpot(digital_int_value) + ROFF) ) )
+
+def dtap_to_rhvpot(digital_int_value):
+    # Result is returned in Kili-Ohm
+    print(digital_int_value)
+    return digital_int_value * (100 / 127)
+
+
 def scan_for_nearby_ble_devices():
     list_of_devices = ADAPTER.scan(timeout = 3)
-
-    for device in list_of_devices:
-        print ('Name:', device['name'], 'Address: ', device['address'])
-
     return list_of_devices
 
 
@@ -62,10 +70,21 @@ class Sensor(QThread):
         self.record_pressure = False
 
         self.gate_time = 100
+        self.voltage = 0x60
+        self.R2 = 1000
+        self.ROFF = 50
 
     def __del__(self):
         self.sensor_running = False
         self.wait()
+
+    def convert_voltage(self):
+        return get_voltage_out(self.voltage, self.R2, self.ROFF)
+
+    def change_voltage(self, value):
+        print(value)
+        self.voltage = int(value)
+        self.device.char_write_handle(WRITE_HANDLE, bytearray([0x02, 0x00, value]))
 
     def run(self):
         start_time = time()
@@ -162,7 +181,7 @@ class Sensor(QThread):
             self.device.char_write_handle(WRITE_HANDLE, bytearray([0x04, 0x80, channel + 0x8b]))
 
             # gate time = 100 ms
-            self.device.char_write_handle(WRITE_HANDLE, bytearray([0x05, 0x01, 0xf4]))
+            self.device.char_write_handle(WRITE_HANDLE, bytearray([0x05, 0x01, self.gate_time]))
 
             # read frequency
             self.device.char_write_handle(WRITE_HANDLE, bytearray([0x04, 0x08, 0x04]))

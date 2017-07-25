@@ -1,4 +1,8 @@
 from main_window import *
+import os
+
+if not os.path.exists('sensor_data/'):
+    os.mkdir('sensor_data/')
 
 if __name__ == '__main__':
 

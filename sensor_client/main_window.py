@@ -1,5 +1,5 @@
-from PyQt5.QtWidgets import QApplication, QLabel, QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QListWidget
-from PyQt5.QtCore import QThread
+from PyQt5.QtWidgets import QApplication, QLabel, QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QFormLayout, QLineEdit, QDialog
+from PyQt5.QtGui import QIntValidator
 
 from sensor import *
 
@@ -11,6 +11,7 @@ class Sensor_Control_Panel_Widget(QWidget):
         self.vertical_box.addStretch(1)
 
         self.list_of_sensor_widgets = []
+        self.add_sensor('name', 'add')
 
         self.setLayout(self.vertical_box)
 
@@ -26,9 +27,62 @@ class Sensor_Control_Panel_Widget(QWidget):
     def show_widget(self):
         self.show()
 
+
+class Settings_Widget(QDialog):
+    def __init__(self, parent_widget):
+        super().__init__()
+        self.parent_widget = parent_widget
+
+        self.voltage_label = QLabel('', self)
+
+        self.voltage_label.setText(str(self.parent_widget.sensor.convert_voltage()))
+        self.gate_time_line_edit = QLineEdit(self)
+        self.gate_time_line_edit.setValidator(QIntValidator())
+        self.gate_time_line_edit.setText(str(self.parent_widget.sensor.gate_time))
+        self.gate_time_line_edit.textChanged.connect(self.gate_time_changed)
+
+        self.voltage_line_edit = QLineEdit(self)
+        self.voltage_line_edit.setValidator(QIntValidator())
+        self.voltage_line_edit.setText(str(self.parent_widget.sensor.voltage))
+        self.voltage_line_edit.textChanged.connect(self.voltage_changed)
+
+        self.voltage_confirm_button = QPushButton('Confirm Voltage',self)
+        self.voltage_confirm_button.clicked.connect(self.change_voltage)
+
+        self.voltage_label.show()
+        self.gate_time_line_edit.show()
+        self.voltage_line_edit.show()
+        self.voltage_confirm_button.show()
+
+        form_layout = QFormLayout()
+        form_layout.addRow('Gate Time (ms)', self.gate_time_line_edit)
+        form_layout.addRow('Voltage (Ohms)', self.voltage_label)
+        form_layout.addRow('Set Voltage (hex-to-int)', self.voltage_line_edit)
+        form_layout.addRow('Confirm Voltage', self.voltage_confirm_button)
+
+        self.setLayout(form_layout)
+
+        self.show()
+
+    def gate_time_changed(self, value):
+        self.parent_widget.sensor.gate_time = int(value)
+
+    def voltage_changed(self, value):
+        if value == '':
+            return
+
+        voltage = get_voltage_out(float(value),
+                                  self.parent_widget.sensor.R2,
+                                  self.parent_widget.sensor.ROFF)
+        self.voltage_label.setText(str(voltage))
+
+    def change_voltage(self):
+        self.parent_widget.sensor.change_voltage(int(self.voltage_line_edit.text()))
+
+
 class Scan_Widget(QWidget):
     def __init__(self, parent_widget, sensor_control_panel):
-        QWidget.__init__(self, parent = parent_widget)
+        QWidget.__init__(self)
 
         scanning_horizontal_box = QHBoxLayout()
         scanning_horizontal_box.addStretch(1)
@@ -72,6 +126,7 @@ class Scan_Widget(QWidget):
     def show_widget(self):
         self.show()
 
+
 class Sensor_Frame(QWidget):
     def __init__(self, parent_widget,  name, mac_address):
         QWidget.__init__(self, parent = parent_widget)
@@ -93,6 +148,7 @@ class Sensor_Frame(QWidget):
         self.read_temperature_button = QPushButton('Read Temperature', self)
         self.read_pressure_button = QPushButton('Read Pressure', self)
         self.read_humidity_button = QPushButton('Read Humidity', self)
+        self.settings_button = QPushButton('Settings', self)
 
         self.connect_button.setStyleSheet("background-color:rgb(255, 0, 0)")
         self.read_frquency_button.setStyleSheet("background-color:rgb(255, 0, 0)")
@@ -106,6 +162,7 @@ class Sensor_Frame(QWidget):
         self.read_temperature_button.clicked.connect(self.toogle_temperature)
         self.read_pressure_button.clicked.connect(self.toogle_pressure)
         self.read_humidity_button.clicked.connect(self.toogle_humidity)
+        self.settings_button.clicked.connect(self.open_popup_settings)
 
         self.connect_button.show()
         self.read_frquency_button.show()
@@ -113,6 +170,7 @@ class Sensor_Frame(QWidget):
         self.read_temperature_button.show()
         self.read_pressure_button.show()
         self.read_humidity_button.show()
+        self.settings_button.show()
 
         horizontal_box = QHBoxLayout()
         horizontal_box.addWidget(self.name_label)
@@ -123,9 +181,13 @@ class Sensor_Frame(QWidget):
         horizontal_box.addWidget(self.read_temperature_button)
         horizontal_box.addWidget(self.read_pressure_button)
         horizontal_box.addWidget(self.read_humidity_button)
+        horizontal_box.addWidget(self.settings_button)
 
         self.setLayout(horizontal_box)
+        self.popup_settings = None
 
+    def open_popup_settings(self):
+        self.popup_settings = Settings_Widget(self)
 
     def toogle_frequency(self):
         if self.sensor.record_frequency:
@@ -175,17 +237,13 @@ class Sensor_Manager_Widget(QWidget):
         control_panel_widget = Sensor_Control_Panel_Widget(self)
         control_panel_widget.show()
 
-
         scan_widget = Scan_Widget(self, control_panel_widget)
         scan_widget.show()
-
-
 
         vertical_layout_box = QVBoxLayout()
         vertical_layout_box.addStretch(1)
 
         vertical_layout_box.addWidget(scan_widget)
         vertical_layout_box.addWidget(control_panel_widget)
-
 
         self.setLayout(vertical_layout_box)
