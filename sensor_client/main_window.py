@@ -100,9 +100,10 @@ class Scan_Widget(QWidget):
         self.add_sensor_button.clicked.connect(self.add_selected_sensor)
         self.add_sensor_button.show()
 
-        scanning_horizontal_box.addWidget(self.list_widget)
-        scanning_horizontal_box.addWidget(self.scan_button)
-        scanning_horizontal_box.addWidget(self.add_sensor_button)
+        # The second argument is the order of intensity to stretch the widget
+        scanning_horizontal_box.addWidget(self.list_widget, 2)
+        scanning_horizontal_box.addWidget(self.scan_button, 1)
+        scanning_horizontal_box.addWidget(self.add_sensor_button, 1)
 
         self.setLayout(scanning_horizontal_box)
 
@@ -243,7 +244,7 @@ class Sensor_Manager_Widget(QWidget):
         vertical_layout_box = QVBoxLayout()
         vertical_layout_box.addStretch(1)
 
-        vertical_layout_box.addWidget(scan_widget)
-        vertical_layout_box.addWidget(control_panel_widget)
+        vertical_layout_box.addWidget(scan_widget, 2)
+        vertical_layout_box.addWidget(control_panel_widget, 1)
 
         self.setLayout(vertical_layout_box)
