@@ -219,7 +219,7 @@ class Sensor(QThread):
                 pass
 
             #print(self.subcription_response)
-            count = struct.unpack('<I', binascii.unhexlify(self.subcription_response.hex()))[0]
+            count = struct.unpack('<I', bytes(self.subcription_response))[0]
 
             # Formula to convert the count recieved from Hz to MHz
             frequency = float(count) / float(2) / (self.gate_time / 1000.0) / 1000000.0
@@ -254,7 +254,7 @@ class Sensor(QThread):
             while self.subcription_response is None:
                 pass
 
-            digital_value = struct.unpack('<I', binascii.unhexlify(self.subcription_response.hex()))[0]
+            digital_value = struct.unpack('<I', bytes(self.subcription_response))[0]
 
             vlog = digital_value * VLSB
             # Calculate resistance
@@ -276,7 +276,7 @@ class Sensor(QThread):
             while self.subcription_response is None:
                 pass
 
-            temperature_float = struct.unpack('<f', binascii.unhexlify(self.subcription_response.hex()))[0]
+            temperature_float = struct.unpack('<f', bytes(self.subcription_response))[0]
 
             return temperature_float
 
@@ -294,7 +294,7 @@ class Sensor(QThread):
             while self.subcription_response is None:
                 pass
 
-            pressure_float = struct.unpack('<f', binascii.unhexlify(self.subcription_response.hex()))[0]
+            pressure_float = struct.unpack('<f', bytes(self.subcription_response))[0]
 
             return pressure_float
 
@@ -312,7 +312,7 @@ class Sensor(QThread):
             while self.subcription_response is None:
                 pass
 
-            humidity_float = struct.unpack('<f', binascii.unhexlify(self.subcription_response.hex()))[0]
+            humidity_float = struct.unpack('<f', bytes(self.subcription_response))[0]
 
             return humidity_float
 
