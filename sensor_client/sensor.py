@@ -7,6 +7,7 @@ import struct
 
 import json
 from time import time, ctime, sleep
+import os
 
 from config import *
 
@@ -33,6 +34,9 @@ except pygatt.exceptions.NotConnectedError:
                 print(e)
                 adapter_print_bool = True
             sleep(1)
+
+if not os.path.exists(DIRECTORY_OF_SENSOR_DATA):
+    os.mkdir(DIRECTORY_OF_SENSOR_DATA)
 
 
 # Returns the voltage using the digital integer value
@@ -109,7 +113,6 @@ class Sensor(QThread):
         while self.sensor_running:
             try:
 
-
                 if self.device is None:
                     self.connect_until_accepted()
 
@@ -162,22 +165,27 @@ class Sensor(QThread):
                     summary_dict['humidity']['value'] = self.read_humidity()
 
 
-                if summary_dict['frequency']['value'] is None and \
-                    summary_dict['resistance']['value'] is None and \
-                    summary_dict['temperature']['value'] is None and \
-                    summary_dict['pressure']['value'] is None and \
-                    summary_dict['humidity']['value'] is None:
-                    continue
 
-                with open(DIRECTORY_OF_SENSOR_DATA + filename, mode='w', encoding='utf-8') as current_file:
 
-                    data_list.append(summary_dict)
-                    json.dump(data_list, current_file)
             except pygatt.exceptions.NotConnectedError as e:
                 self.connect_until_accepted()
 
             except Exception as e:
                 print ('ERROR: Sensor:', e)
+
+            finally:
+                if summary_dict['frequency']['value'] is None and \
+                    summary_dict['resistance']['value'] is None and \
+                    summary_dict['temperature']['value'] is None and \
+                    summary_dict['pressure']['value'] is None and \
+                    summary_dict['humidity']['value'] is None:
+                    pass
+                else:
+
+                    with open(DIRECTORY_OF_SENSOR_DATA + filename, mode='w', encoding='utf-8') as current_file:
+                        data_list.append(summary_dict)
+                        json.dump(data_list, current_file)
+                    sleep(.5)
 
     def connect_until_accepted(self):
         not_connected = True

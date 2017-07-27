@@ -9,8 +9,16 @@ class Sensor_Control_Panel_Widget(QWidget):
 
         self.list_of_sensor_widgets = []
 
+
         self.vertical_box = QVBoxLayout()
         self.setLayout(self.vertical_box)
+
+        #self.add_sensor('Simblee', '16:C3:60:40:70:6B')
+        #self.add_sensor('Simblee', '3B:6C:68:3F:88:8D')
+        #self.add_sensor('Simblee', 'BB:AF:B8:4F:21:0C')
+        #self.add_sensor('Simblee', 'E5:7B:2D:E6:D5:3D')
+        #self.add_sensor('Simblee', 'BE:B5:D1:52:7A:6E')
+        #self.add_sensor('Simblee', 'F5:10:0D:0B:FF:2F')
 
     def add_sensor(self, name, mac_address):
         for temp_sensor in self.list_of_sensor_widgets:
@@ -68,14 +76,14 @@ class Settings_Widget(QDialog):
         self.channel_seven_toogle_button.clicked.connect(self.toogle_channel_seven)
         self.channel_eight_toogle_button.clicked.connect(self.toogle_channel_eight)
 
-        self.channel_one_toogle_button.setStyleSheet("color:rgb(0, 255, 0)")
-        self.channel_two_toogle_button.setStyleSheet("color:rgb(0, 255, 0)")
-        self.channel_three_toogle_button.setStyleSheet("color:rgb(0, 255, 0)")
-        self.channel_four_toogle_button.setStyleSheet("color:rgb(0, 255, 0)")
-        self.channel_five_toogle_button.setStyleSheet("color:rgb(0, 255, 0)")
-        self.channel_six_toogle_button.setStyleSheet("color:rgb(0, 255, 0)")
-        self.channel_seven_toogle_button.setStyleSheet("color:rgb(0, 255, 0)")
-        self.channel_eight_toogle_button.setStyleSheet("color:rgb(0, 255, 0)")
+        self.channel_one_toogle_button.setStyleSheet("color:rgb(0,255,0)")
+        self.channel_two_toogle_button.setStyleSheet("color:rgb(0,255,0)")
+        self.channel_three_toogle_button.setStyleSheet("color:rgb(0,255,0)")
+        self.channel_four_toogle_button.setStyleSheet("color:rgb(0,255,0)")
+        self.channel_five_toogle_button.setStyleSheet("color:rgb(0,255,0)")
+        self.channel_six_toogle_button.setStyleSheet("color:rgb(0,255,0)")
+        self.channel_seven_toogle_button.setStyleSheet("color:rgb(0,255,0)")
+        self.channel_eight_toogle_button.setStyleSheet("color:rgb(0,255,0)")
 
         self.channel_one_toogle_button.show()
         self.channel_two_toogle_button.show()
@@ -113,66 +121,66 @@ class Settings_Widget(QDialog):
         ACTIVE_CHANNEL_LIST[0] = not ACTIVE_CHANNEL_LIST[0]
 
         if ACTIVE_CHANNEL_LIST[0]:
-            self.channel_one_toogle_button.setStyleSheet("color:rgb(0, 255, 0)")
+            self.channel_one_toogle_button.setStyleSheet("color:rgb(0,255,0)")
         else:
-            self.channel_one_toogle_button.setStyleSheet("color:rgb(255, 0, 0)")
+            self.channel_one_toogle_button.setStyleSheet("color:rgb(255,0,0)")
 
 
     def toogle_channel_two(self):
         ACTIVE_CHANNEL_LIST[1] = not ACTIVE_CHANNEL_LIST[1]
 
         if ACTIVE_CHANNEL_LIST[1]:
-            self.channel_two_toogle_button.setStyleSheet("color:rgb(0, 255, 0)")
+            self.channel_two_toogle_button.setStyleSheet("color:rgb(0,255,0)")
         else:
-            self.channel_two_toogle_button.setStyleSheet("color:rgb(255, 0, 0)")
+            self.channel_two_toogle_button.setStyleSheet("color:rgb(255,0,0)")
 
     def toogle_channel_three(self):
         ACTIVE_CHANNEL_LIST[2] = not ACTIVE_CHANNEL_LIST[2]
 
         if ACTIVE_CHANNEL_LIST[2]:
-            self.channel_three_toogle_button.setStyleSheet("color:rgb(0, 255, 0)")
+            self.channel_three_toogle_button.setStyleSheet("color:rgb(0,255,0)")
         else:
-            self.channel_three_toogle_button.setStyleSheet("color:rgb(255, 0, 0)")
+            self.channel_three_toogle_button.setStyleSheet("color:rgb(255,0,0)")
 
     def toogle_channel_four(self):
         ACTIVE_CHANNEL_LIST[3] = not ACTIVE_CHANNEL_LIST[3]
 
         if ACTIVE_CHANNEL_LIST[3]:
-            self.channel_four_toogle_button.setStyleSheet("color:rgb(0, 255, 0)")
+            self.channel_four_toogle_button.setStyleSheet("color:rgb(0,255,0)")
         else:
-            self.channel_four_toogle_button.setStyleSheet("color:rgb(255, 0, 0)")
+            self.channel_four_toogle_button.setStyleSheet("color:rgb(255,0,0)")
 
     def toogle_channel_five(self):
         ACTIVE_CHANNEL_LIST[4] = not ACTIVE_CHANNEL_LIST[4]
 
         if ACTIVE_CHANNEL_LIST[4]:
-            self.channel_five_toogle_button.setStyleSheet("color:rgb(0, 255, 0)")
+            self.channel_five_toogle_button.setStyleSheet("color:rgb(0,255,0)")
         else:
-            self.channel_five_toogle_button.setStyleSheet("color:rgb(255, 0, 0)")
+            self.channel_five_toogle_button.setStyleSheet("color:rgb(255,0,0)")
 
     def toogle_channel_six(self):
         ACTIVE_CHANNEL_LIST[5] = not ACTIVE_CHANNEL_LIST[5]
 
         if ACTIVE_CHANNEL_LIST[5]:
-            self.channel_six_toogle_button.setStyleSheet("color:rgb(0, 255, 0)")
+            self.channel_six_toogle_button.setStyleSheet("color:rgb(0,255,0)")
         else:
-            self.channel_six_toogle_button.setStyleSheet("color:rgb(255, 0, 0)")
+            self.channel_six_toogle_button.setStyleSheet("color:rgb(255,0,0)")
 
     def toogle_channel_seven(self):
         ACTIVE_CHANNEL_LIST[6] = not ACTIVE_CHANNEL_LIST[6]
 
         if ACTIVE_CHANNEL_LIST[6]:
-            self.channel_seven_toogle_button.setStyleSheet("color:rgb(0, 255, 0)")
+            self.channel_seven_toogle_button.setStyleSheet("color:rgb(0,255,0)")
         else:
-            self.channel_seven_toogle_button.setStyleSheet("color:rgb(255, 0, 0)")
+            self.channel_seven_toogle_button.setStyleSheet("color:rgb(255,0,0)")
 
     def toogle_channel_eight(self):
         ACTIVE_CHANNEL_LIST[7] = not ACTIVE_CHANNEL_LIST[7]
 
         if ACTIVE_CHANNEL_LIST[7]:
-            self.channel_eight_toogle_button.setStyleSheet("color:rgb(0, 255, 0)")
+            self.channel_eight_toogle_button.setStyleSheet("color:rgb(0,255,0)")
         else:
-            self.channel_eight_toogle_button.setStyleSheet("color:rgb(255, 0, 0)")
+            self.channel_eight_toogle_button.setStyleSheet("color:rgb(255,0,0)")
 
 
     def gate_time_changed(self, value):
@@ -213,8 +221,8 @@ class Scan_Widget(QWidget):
         self.add_sensor_button.show()
 
         button_layout = QVBoxLayout()
-        self.scan_button.setMinimumSize(200, 350)
-        self.add_sensor_button.setMinimumSize(200, 350)
+        self.scan_button.setMinimumSize(200, 100)
+        self.add_sensor_button.setMinimumSize(200, 100)
         button_layout.addWidget(self.scan_button)
         button_layout.addWidget(self.add_sensor_button)
 
@@ -311,40 +319,40 @@ class Sensor_Frame(QWidget):
         self.sensor.record_frequency = not self.sensor.record_frequency
 
         if self.sensor.record_frequency:
-            self.read_frquency_button.setStyleSheet("background-color:rgb(255, 0, 0)")
-        else:
             self.read_frquency_button.setStyleSheet("background-color:rgb(0, 255, 0)")
+        else:
+            self.read_frquency_button.setStyleSheet("background-color:rgb(255, 0, 0)")
 
     def toogle_resistance(self):
         self.sensor.record_resistance = not self.sensor.record_resistance
         if self.sensor.record_resistance:
-            self.read_resistance_button.setStyleSheet("background-color:rgb(255, 0, 0)")
-        else:
             self.read_resistance_button.setStyleSheet("background-color:rgb(0, 255, 0)")
+        else:
+            self.read_resistance_button.setStyleSheet("background-color:rgb(255, 0, 0)")
 
     def toogle_temperature(self):
         self.sensor.record_temperature = not self.sensor.record_temperature
 
         if self.sensor.record_temperature:
-            self.read_temperature_button.setStyleSheet("background-color:rgb(255, 0, 0)")
-        else:
             self.read_temperature_button.setStyleSheet("background-color:rgb(0, 255, 0)")
+        else:
+            self.read_temperature_button.setStyleSheet("background-color:rgb(255, 0, 0)")
 
     def toogle_pressure(self):
         self.sensor.record_pressure = not self.sensor.record_pressure
 
         if self.sensor.record_pressure:
-            self.read_pressure_button.setStyleSheet("background-color:rgb(255, 0, 0)")
-        else:
             self.read_pressure_button.setStyleSheet("background-color:rgb(0, 255, 0)")
+        else:
+            self.read_pressure_button.setStyleSheet("background-color:rgb(255, 0, 0)")
 
     def toogle_humidity(self):
         self.sensor.record_humidity = not self.sensor.record_humidity
 
         if self.sensor.record_humidity:
-            self.read_humidity_button.setStyleSheet("background-color:rgb(255, 0, 0)")
-        else:
             self.read_humidity_button.setStyleSheet("background-color:rgb(0, 255, 0)")
+        else:
+            self.read_humidity_button.setStyleSheet("background-color:rgb(255, 0, 0)")
 
 
 class Sensor_Manager_Widget(QWidget):
@@ -363,4 +371,4 @@ class Sensor_Manager_Widget(QWidget):
         vertical_layout_box.addWidget(control_panel_widget)
 
         self.setLayout(vertical_layout_box)
-        self.setGeometry(100, 100, 1280, 720)
+        self.setGeometry(100, 100, 600, 200)

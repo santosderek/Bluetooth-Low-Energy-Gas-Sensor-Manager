@@ -1,3 +1,6 @@
 sensor_data
 __pycache__
 *.pyc
+Copy
+build
+CMUT_Graph_Sensor_Manager.egg-info
