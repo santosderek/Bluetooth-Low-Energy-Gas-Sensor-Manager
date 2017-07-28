@@ -13,6 +13,5 @@ setup(name='CMUT Graph Sensor Manager',
       entry_points={
         'console_scripts':
             ['sensormanager = main:main']
-      },
-      install_requires=['pyqtgraph==0.10.0', 'PyQt5==5.9']
+      }
      )
