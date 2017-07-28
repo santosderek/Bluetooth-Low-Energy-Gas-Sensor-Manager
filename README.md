@@ -35,10 +35,10 @@ Lastly, configure the config.py as intended, and run the following command withi
 *** If on OSX you might need to use 'sudo' before the command. ***
 
 #### Linux:
-The following commands are within ubuntu_install.sh.
+The following commands are within linux_install.sh.
 
 You can run:
-> bash ubuntu_install.sh
+> bash linux_install.sh
 
 Or can install using the following commands in order:
 > sudo apt-get update
