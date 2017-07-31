@@ -1,10 +1,10 @@
+# 3rd party modules
 from PyQt5.QtCore import QThread
 import pygatt
 
+# Python Modules
 import sys
-import binascii
 import struct
-
 import json
 from time import time, ctime, sleep
 import os
@@ -13,6 +13,8 @@ from config import *
 
 # Allows error to print once
 adapter_print_bool = False
+
+""" Loop until the adapter was found and connected to """
 try:
     global ADAPTER
     ADAPTER = pygatt.BGAPIBackend()
@@ -35,28 +37,29 @@ except pygatt.exceptions.NotConnectedError:
                 adapter_print_bool = True
             sleep(1)
 
+""" If the sensor data folder is not found, make one """
 if not os.path.exists(DIRECTORY_OF_SENSOR_DATA):
     os.mkdir(DIRECTORY_OF_SENSOR_DATA)
 
 
-# Returns the voltage using the digital integer value
 def get_voltage_out(digital_int_value, R2, ROFF):
-    return 1.24 * (1 + (R2 / (dtap_to_rhvpot(digital_int_value) + ROFF) ) )
+    """ Returns the voltage using the digital integer value """
+    return 1.24 * (1 + (R2 / (dtap_to_rhvpot(digital_int_value) + ROFF)))
+
 
 def dtap_to_rhvpot(digital_int_value):
-    # Result is returned in Kili-Ohm
-    #print(digital_int_value)
+    """ Result is returned in Kili-Ohm """
     return digital_int_value * (100 / 127)
 
 
 def scan_for_nearby_ble_devices():
+    """ Returns a list of nearby devices """
     try:
-        list_of_devices = ADAPTER.scan(timeout = 3)
+        list_of_devices = ADAPTER.scan(timeout=3)
         return list_of_devices
     except Exception as e:
         print(e)
         return []
-
 
 
 class Sensor(QThread):
@@ -69,8 +72,10 @@ class Sensor(QThread):
         self.sensor_running = True
 
         try:
-            self.device = ADAPTER.connect(self.mac_address, address_type = ADDRESS_TYPE)
-            self.device.subscribe(READ_UUID, callback = self.subcription_callback)
+            self.device = ADAPTER.connect(
+                self.mac_address, address_type=ADDRESS_TYPE)
+            self.device.subscribe(
+                READ_UUID, callback=self.subcription_callback)
         except pygatt.exceptions.NotConnectedError:
             self.device = None
         except Exception as e:
@@ -95,15 +100,18 @@ class Sensor(QThread):
         self.wait()
 
     def convert_voltage(self):
+        """ Converts the current hex number to voltage """
         return get_voltage_out(self.voltage, self.R2, self.ROFF)
 
     def change_voltage(self, value):
+        """ Changes the current voltage value """
         self.set_voltage = int(value)
 
-
     def run(self):
+        """ Loop and record the data from the current sensor """
         start_time = time()
-        filename = '{}-{}-{}.json'.format(self.name,self.mac_address.replace(':','_'), ctime(start_time).replace(':', '_'))
+        filename = '{}-{}-{}.json'.format(self.name, self.mac_address.replace(
+            ':', '_'), ctime(start_time).replace(':', '_'))
 
         data_list = []
 
@@ -116,33 +124,34 @@ class Sensor(QThread):
                 if self.device is None:
                     self.connect_until_accepted()
 
-                summary_dict = {'frequency':{'time':time()-start_time,
-                                             'value':{ 0: None,
-                                                       1: None,
-                                                       2: None,
-                                                       3: None,
-                                                       4: None,
-                                                       5: None,
-                                                       6: None,
-                                                       7: None}},
+                summary_dict = {'frequency': {'time': time() - start_time,
+                                              'value': {0: None,
+                                                        1: None,
+                                                        2: None,
+                                                        3: None,
+                                                        4: None,
+                                                        5: None,
+                                                        6: None,
+                                                        7: None}},
 
-                                'resistance': {'time':time()-start_time, 'value':None},
+                                'resistance': {'time': time() - start_time, 'value': None},
 
-                                'temperature':{'time':time()-start_time, 'value':None},
+                                'temperature': {'time': time() - start_time, 'value': None},
 
-                                'pressure':   {'time':time()-start_time, 'value':None},
+                                'pressure':   {'time': time() - start_time, 'value': None},
 
-                                'humidity':   {'time':time()-start_time, 'value':None},
+                                'humidity':   {'time': time() - start_time, 'value': None},
 
                                 }
 
                 if self.set_voltage != self.voltage:
                     try:
                         print(self.set_voltage)
-                        self.device.char_write_handle(WRITE_HANDLE, bytearray([0x02, 0x00, int(self.set_voltage)]), wait_for_response=False)
+                        self.device.char_write_handle(WRITE_HANDLE, bytearray(
+                            [0x02, 0x00, int(self.set_voltage)]), wait_for_response=False)
                         sleep(5)
                         self.voltage = self.set_voltage
-                        print (self.voltage)
+                        print(self.voltage)
                     except Exception as e:
                         print(e)
 
@@ -150,7 +159,8 @@ class Sensor(QThread):
 
                     for channel_position in range(len(CHANNELS)):
                         if ACTIVE_CHANNEL_LIST[channel_position]:
-                            summary_dict['frequency']['value'][channel_position] = self.read_frequency(CHANNELS[channel_position])
+                            summary_dict['frequency']['value'][channel_position] = self.read_frequency(
+                                CHANNELS[channel_position])
 
                 if self.record_resistance:
                     summary_dict['resistance']['value'] = self.read_resistance()
@@ -164,21 +174,18 @@ class Sensor(QThread):
                 if self.record_humidity:
                     summary_dict['humidity']['value'] = self.read_humidity()
 
-
-
-
             except pygatt.exceptions.NotConnectedError as e:
                 self.connect_until_accepted()
 
             except Exception as e:
-                print ('ERROR: Sensor:', e)
+                print('ERROR: Sensor:', e)
 
             finally:
                 if summary_dict['frequency']['value'] is None and \
-                    summary_dict['resistance']['value'] is None and \
-                    summary_dict['temperature']['value'] is None and \
-                    summary_dict['pressure']['value'] is None and \
-                    summary_dict['humidity']['value'] is None:
+                        summary_dict['resistance']['value'] is None and \
+                        summary_dict['temperature']['value'] is None and \
+                        summary_dict['pressure']['value'] is None and \
+                        summary_dict['humidity']['value'] is None:
                     pass
                 else:
 
@@ -188,12 +195,15 @@ class Sensor(QThread):
                     sleep(.5)
 
     def connect_until_accepted(self):
+        """ Loop until the current device has connected """
         not_connected = True
 
         while not_connected:
             try:
-                self.device = ADAPTER.connect(self.mac_address, address_type = ADDRESS_TYPE)
-                self.device.subscribe(READ_UUID, callback = self.subcription_callback)
+                self.device = ADAPTER.connect(
+                    self.mac_address, address_type=ADDRESS_TYPE)
+                self.device.subscribe(
+                    READ_UUID, callback=self.subcription_callback)
                 not_connected = False
             except pygatt.exceptions.NotConnectedError:
                 self.device = None
@@ -201,41 +211,38 @@ class Sensor(QThread):
                 self.device = None
 
     def subcription_callback(self, handle, data):
+        """ Record the data recieved from the sensor """
         self.subcription_response = data
 
     def read_frequency(self, channel):
+        """ Record the frequency from the sensor """
         try:
-            self.device.char_write_handle(WRITE_HANDLE, bytearray([0x04, 0x80, channel + 0x80 + 0x0a]))
-            self.device.char_write_handle(WRITE_HANDLE, bytearray([0x04, 0x80, channel + 0x80 + 0x0b]))
+            self.device.char_write_handle(WRITE_HANDLE, bytearray(
+                [0x04, 0x80, channel + 0x80 + 0x0a]))
+            self.device.char_write_handle(WRITE_HANDLE, bytearray(
+                [0x04, 0x80, channel + 0x80 + 0x0b]))
 
             # gate time = 100 ms
-            #print('Gate time:', self.gate_time)
-            self.device.char_write_handle(WRITE_HANDLE, bytearray([0x05, 0x00, self.gate_time]))
+            self.device.char_write_handle(
+                WRITE_HANDLE, bytearray([0x05, 0x00, self.gate_time]))
 
             # read frequency
-            self.device.char_write_handle(WRITE_HANDLE, bytearray([0x04, 0x08, 0x04]))
+            self.device.char_write_handle(
+                WRITE_HANDLE, bytearray([0x04, 0x08, 0x04]))
 
             while self.subcription_response is None:
                 pass
 
-            #print(self.subcription_response)
             count = struct.unpack('<I', bytes(self.subcription_response))[0]
 
             # Formula to convert the count recieved from Hz to MHz
-            frequency = float(count) / float(2) / (self.gate_time / 1000.0) / 1000000.0
-
-            #print ('---------------------------------')
-            #print ('{}'.format(self.subcription_response))
-            #print ('Count Hex:', self.subcription_response.hex())
-            #print ('Count:', float(count))
-            #print ('Gate Time:', float(self.gate_time))
-            #print ('Frequency:', float(frequency))
-            #print ('---------------------------------')
+            frequency = float(count) / float(2) / \
+                (self.gate_time / 1000.0) / 1000000.0
 
             return frequency
 
         except Exception as e:
-            print ('Channel %d' % channel, e)
+            print('Channel %d' % channel, e)
 
         finally:
             self.subcription_response = None
@@ -243,10 +250,12 @@ class Sensor(QThread):
     def v2r_scaled(self, v):
         vin = (v - VOCM) / A0
         i = (vin - VICM) / R1
-        r_sensor = (VC * RL - vin * RL)/(vin + RL * i)
+        r_sensor = (VC * RL - vin * RL) / (vin + RL * i)
         return r_sensor
 
     def read_resistance(self):
+        """ Record the resistance from the sensor """
+
         try:
             # read resistance
             self.device.char_write_handle(WRITE_HANDLE, bytearray([0x04]))
@@ -254,7 +263,8 @@ class Sensor(QThread):
             while self.subcription_response is None:
                 pass
 
-            digital_value = struct.unpack('<I', bytes(self.subcription_response))[0]
+            digital_value = struct.unpack(
+                '<I', bytes(self.subcription_response))[0]
 
             vlog = digital_value * VLSB
             # Calculate resistance
@@ -263,12 +273,13 @@ class Sensor(QThread):
             return resistance
 
         except Exception as e:
-            print (e)
+            print(e)
 
         finally:
             self.subcription_response = None
 
     def read_temperature(self):
+        """ Record the Temperature from the sensor """
         try:
             # read Temperature
             self.device.char_write_handle(WRITE_HANDLE, bytearray([0x06]))
@@ -276,17 +287,19 @@ class Sensor(QThread):
             while self.subcription_response is None:
                 pass
 
-            temperature_float = struct.unpack('<f', bytes(self.subcription_response))[0]
+            temperature_float = struct.unpack(
+                '<f', bytes(self.subcription_response))[0]
 
             return temperature_float
 
         except Exception as e:
-            print ('ERROR: Temperature:', e)
+            print('ERROR: Temperature:', e)
 
         finally:
             self.subcription_response = None
 
     def read_pressure(self):
+        """ Record the pressure from the sensor """
         try:
             # read Pressure
             self.device.char_write_handle(WRITE_HANDLE, bytearray([0x07]))
@@ -294,17 +307,19 @@ class Sensor(QThread):
             while self.subcription_response is None:
                 pass
 
-            pressure_float = struct.unpack('<f', bytes(self.subcription_response))[0]
+            pressure_float = struct.unpack(
+                '<f', bytes(self.subcription_response))[0]
 
             return pressure_float
 
         except Exception as e:
-            print ('ERROR: Temperature:', e)
+            print('ERROR: Temperature:', e)
 
         finally:
             self.subcription_response = None
 
     def read_humidity(self):
+        """ Record the humidity from the sensor """
         try:
             # read Pressure
             self.device.char_write_handle(WRITE_HANDLE, bytearray([0x08]))
@@ -312,12 +327,13 @@ class Sensor(QThread):
             while self.subcription_response is None:
                 pass
 
-            humidity_float = struct.unpack('<f', bytes(self.subcription_response))[0]
+            humidity_float = struct.unpack(
+                '<f', bytes(self.subcription_response))[0]
 
             return humidity_float
 
         except Exception as e:
-            print ('ERROR: Temperature:', e)
+            print('ERROR: Temperature:', e)
 
         finally:
             self.subcription_response = None

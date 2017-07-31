@@ -1,26 +1,31 @@
-from PyQt5.QtWidgets import QApplication, QLabel, QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QFormLayout, QLineEdit, QDialog, QGridLayout
+from PyQt5.QtWidgets import (QApplication,
+                             QLabel,
+                             QPushButton,
+                             QWidget,
+                             QVBoxLayout,
+                             QHBoxLayout,
+                             QListWidget,
+                             QFormLayout,
+                             QLineEdit,
+                             QDialog,
+                             QGridLayout)
+
 from PyQt5.QtGui import QIntValidator
 
 from sensor import *
 
+
 class Sensor_Control_Panel_Widget(QWidget):
     def __init__(self, parent_widget):
-        QWidget.__init__(self, parent = parent_widget)
+        QWidget.__init__(self, parent=parent_widget)
 
         self.list_of_sensor_widgets = []
-
 
         self.vertical_box = QVBoxLayout()
         self.setLayout(self.vertical_box)
 
-        #self.add_sensor('Simblee', '16:C3:60:40:70:6B')
-        #self.add_sensor('Simblee', '3B:6C:68:3F:88:8D')
-        #self.add_sensor('Simblee', 'BB:AF:B8:4F:21:0C')
-        #self.add_sensor('Simblee', 'E5:7B:2D:E6:D5:3D')
-        #self.add_sensor('Simblee', 'BE:B5:D1:52:7A:6E')
-        #self.add_sensor('Simblee', 'F5:10:0D:0B:FF:2F')
-
     def add_sensor(self, name, mac_address):
+        """ Adds a  snesor_frame into the list of widgets collected so far """
         for temp_sensor in self.list_of_sensor_widgets:
             if temp_sensor.mac_address == mac_address:
                 return
@@ -30,11 +35,13 @@ class Sensor_Control_Panel_Widget(QWidget):
         self.vertical_box.addWidget(sensor)
 
     def show_widget(self):
+        """ Show this current widget """
         self.show()
 
 
 class Settings_Widget(QDialog):
     def __init__(self, parent_widget):
+        """ Creation of the settings widget and layout """
         super().__init__()
         self.parent_widget = parent_widget
 
@@ -58,23 +65,28 @@ class Settings_Widget(QDialog):
         self.voltage_confirm_button.clicked.connect(self.change_voltage)
 
         # Channel Toggle Buttons
-        self.channel_one_toogle_button   = QPushButton('Toogle', self)
-        self.channel_two_toogle_button   = QPushButton('Toogle', self)
+        self.channel_one_toogle_button = QPushButton('Toogle', self)
+        self.channel_two_toogle_button = QPushButton('Toogle', self)
         self.channel_three_toogle_button = QPushButton('Toogle', self)
-        self.channel_four_toogle_button  = QPushButton('Toogle', self)
-        self.channel_five_toogle_button  = QPushButton('Toogle', self)
-        self.channel_six_toogle_button   = QPushButton('Toogle', self)
+        self.channel_four_toogle_button = QPushButton('Toogle', self)
+        self.channel_five_toogle_button = QPushButton('Toogle', self)
+        self.channel_six_toogle_button = QPushButton('Toogle', self)
         self.channel_seven_toogle_button = QPushButton('Toogle', self)
         self.channel_eight_toogle_button = QPushButton('Toogle', self)
 
         self.channel_one_toogle_button.clicked.connect(self.toogle_channel_one)
         self.channel_two_toogle_button.clicked.connect(self.toogle_channel_two)
-        self.channel_three_toogle_button.clicked.connect(self.toogle_channel_three)
-        self.channel_four_toogle_button.clicked.connect(self.toogle_channel_four)
-        self.channel_five_toogle_button.clicked.connect(self.toogle_channel_five)
+        self.channel_three_toogle_button.clicked.connect(
+            self.toogle_channel_three)
+        self.channel_four_toogle_button.clicked.connect(
+            self.toogle_channel_four)
+        self.channel_five_toogle_button.clicked.connect(
+            self.toogle_channel_five)
         self.channel_six_toogle_button.clicked.connect(self.toogle_channel_six)
-        self.channel_seven_toogle_button.clicked.connect(self.toogle_channel_seven)
-        self.channel_eight_toogle_button.clicked.connect(self.toogle_channel_eight)
+        self.channel_seven_toogle_button.clicked.connect(
+            self.toogle_channel_seven)
+        self.channel_eight_toogle_button.clicked.connect(
+            self.toogle_channel_eight)
 
         self.channel_one_toogle_button.setStyleSheet("color:rgb(0,255,0)")
         self.channel_two_toogle_button.setStyleSheet("color:rgb(0,255,0)")
@@ -118,6 +130,7 @@ class Settings_Widget(QDialog):
         self.show()
 
     def toogle_channel_one(self):
+        """ Toogle the selected channel """
         ACTIVE_CHANNEL_LIST[0] = not ACTIVE_CHANNEL_LIST[0]
 
         if ACTIVE_CHANNEL_LIST[0]:
@@ -125,8 +138,8 @@ class Settings_Widget(QDialog):
         else:
             self.channel_one_toogle_button.setStyleSheet("color:rgb(255,0,0)")
 
-
     def toogle_channel_two(self):
+        """ Toogle the selected channel """
         ACTIVE_CHANNEL_LIST[1] = not ACTIVE_CHANNEL_LIST[1]
 
         if ACTIVE_CHANNEL_LIST[1]:
@@ -135,14 +148,18 @@ class Settings_Widget(QDialog):
             self.channel_two_toogle_button.setStyleSheet("color:rgb(255,0,0)")
 
     def toogle_channel_three(self):
+        """ Toogle the selected channel """
         ACTIVE_CHANNEL_LIST[2] = not ACTIVE_CHANNEL_LIST[2]
 
         if ACTIVE_CHANNEL_LIST[2]:
-            self.channel_three_toogle_button.setStyleSheet("color:rgb(0,255,0)")
+            self.channel_three_toogle_button.setStyleSheet(
+                "color:rgb(0,255,0)")
         else:
-            self.channel_three_toogle_button.setStyleSheet("color:rgb(255,0,0)")
+            self.channel_three_toogle_button.setStyleSheet(
+                "color:rgb(255,0,0)")
 
     def toogle_channel_four(self):
+        """ Toogle the selected channel """
         ACTIVE_CHANNEL_LIST[3] = not ACTIVE_CHANNEL_LIST[3]
 
         if ACTIVE_CHANNEL_LIST[3]:
@@ -151,6 +168,7 @@ class Settings_Widget(QDialog):
             self.channel_four_toogle_button.setStyleSheet("color:rgb(255,0,0)")
 
     def toogle_channel_five(self):
+        """ Toogle the selected channel """
         ACTIVE_CHANNEL_LIST[4] = not ACTIVE_CHANNEL_LIST[4]
 
         if ACTIVE_CHANNEL_LIST[4]:
@@ -159,6 +177,7 @@ class Settings_Widget(QDialog):
             self.channel_five_toogle_button.setStyleSheet("color:rgb(255,0,0)")
 
     def toogle_channel_six(self):
+        """ Toogle the selected channel """
         ACTIVE_CHANNEL_LIST[5] = not ACTIVE_CHANNEL_LIST[5]
 
         if ACTIVE_CHANNEL_LIST[5]:
@@ -167,28 +186,35 @@ class Settings_Widget(QDialog):
             self.channel_six_toogle_button.setStyleSheet("color:rgb(255,0,0)")
 
     def toogle_channel_seven(self):
+        """ Toogle the selected channel """
         ACTIVE_CHANNEL_LIST[6] = not ACTIVE_CHANNEL_LIST[6]
 
         if ACTIVE_CHANNEL_LIST[6]:
-            self.channel_seven_toogle_button.setStyleSheet("color:rgb(0,255,0)")
+            self.channel_seven_toogle_button.setStyleSheet(
+                "color:rgb(0,255,0)")
         else:
-            self.channel_seven_toogle_button.setStyleSheet("color:rgb(255,0,0)")
+            self.channel_seven_toogle_button.setStyleSheet(
+                "color:rgb(255,0,0)")
 
     def toogle_channel_eight(self):
+        """ Toogle the selected channel """
         ACTIVE_CHANNEL_LIST[7] = not ACTIVE_CHANNEL_LIST[7]
 
         if ACTIVE_CHANNEL_LIST[7]:
-            self.channel_eight_toogle_button.setStyleSheet("color:rgb(0,255,0)")
+            self.channel_eight_toogle_button.setStyleSheet(
+                "color:rgb(0,255,0)")
         else:
-            self.channel_eight_toogle_button.setStyleSheet("color:rgb(255,0,0)")
-
+            self.channel_eight_toogle_button.setStyleSheet(
+                "color:rgb(255,0,0)")
 
     def gate_time_changed(self, value):
+        """ Change the gate_time to the passed value """
         if value == '':
             return
         self.parent_widget.sensor.gate_time = int(value)
 
     def voltage_changed(self, value):
+        """ Change the voltage to the passed value """
         if value == '':
             return
 
@@ -198,12 +224,14 @@ class Settings_Widget(QDialog):
         self.voltage_label.setText(str(voltage))
 
     def change_voltage(self):
-        self.parent_widget.sensor.change_voltage(int(self.voltage_line_edit.text()))
+        """ Change the voltage text """
+        self.parent_widget.sensor.change_voltage(
+            int(self.voltage_line_edit.text()))
 
 
 class Scan_Widget(QWidget):
     def __init__(self, parent_widget, sensor_control_panel):
-        QWidget.__init__(self, parent = parent_widget)
+        QWidget.__init__(self, parent=parent_widget)
 
         scanning_horizontal_box = QHBoxLayout()
 
@@ -233,6 +261,7 @@ class Scan_Widget(QWidget):
         self.setLayout(scanning_horizontal_box)
 
     def scan(self):
+        """ Scan for nearby BLE devices and place them within the list """
         list_of_devices = scan_for_nearby_ble_devices()
         self.list_widget.clear()
 
@@ -241,6 +270,7 @@ class Scan_Widget(QWidget):
             self.list_widget.addItem(text)
 
     def add_selected_sensor(self):
+        """ Add the selected sensor from the list of neaby devices """
         if self.list_widget.currentItem() is None:
             return
         line = self.list_widget.currentItem().text()
@@ -248,14 +278,14 @@ class Scan_Widget(QWidget):
 
         self.sensor_control_panel.add_sensor(name, address)
 
-
     def show_widget(self):
+        """ Show the current widget """
         self.show()
 
 
 class Sensor_Frame(QWidget):
     def __init__(self, parent_widget,  name, mac_address):
-        QWidget.__init__(self, parent = parent_widget)
+        QWidget.__init__(self, parent=parent_widget)
 
         self.name = name
         self.mac_address = mac_address
@@ -277,11 +307,16 @@ class Sensor_Frame(QWidget):
         self.settings_button = QPushButton('Settings', self)
 
         self.connect_button.setStyleSheet("background-color:rgb(255, 0, 0)")
-        self.read_frquency_button.setStyleSheet("background-color:rgb(255, 0, 0)")
-        self.read_resistance_button.setStyleSheet("background-color:rgb(255, 0, 0)")
-        self.read_temperature_button.setStyleSheet("background-color:rgb(255, 0, 0)")
-        self.read_pressure_button.setStyleSheet("background-color:rgb(255, 0, 0)")
-        self.read_humidity_button.setStyleSheet("background-color:rgb(255, 0, 0)")
+        self.read_frquency_button.setStyleSheet(
+            "background-color:rgb(255, 0, 0)")
+        self.read_resistance_button.setStyleSheet(
+            "background-color:rgb(255, 0, 0)")
+        self.read_temperature_button.setStyleSheet(
+            "background-color:rgb(255, 0, 0)")
+        self.read_pressure_button.setStyleSheet(
+            "background-color:rgb(255, 0, 0)")
+        self.read_humidity_button.setStyleSheet(
+            "background-color:rgb(255, 0, 0)")
 
         self.read_frquency_button.clicked.connect(self.toogle_frequency)
         self.read_resistance_button.clicked.connect(self.toogle_resistance)
@@ -313,50 +348,67 @@ class Sensor_Frame(QWidget):
         self.popup_settings = None
 
     def open_popup_settings(self):
+        """ Open a popup that displays the settings widget """
         self.popup_settings = Settings_Widget(self)
 
     def toogle_frequency(self):
+        """ Toogle when frequency data will be obtained """
         self.sensor.record_frequency = not self.sensor.record_frequency
 
         if self.sensor.record_frequency:
-            self.read_frquency_button.setStyleSheet("background-color:rgb(0, 255, 0)")
+            self.read_frquency_button.setStyleSheet(
+                "background-color:rgb(0, 255, 0)")
         else:
-            self.read_frquency_button.setStyleSheet("background-color:rgb(255, 0, 0)")
+            self.read_frquency_button.setStyleSheet(
+                "background-color:rgb(255, 0, 0)")
 
     def toogle_resistance(self):
+        """ Toogle when resistance data will be obtained """
         self.sensor.record_resistance = not self.sensor.record_resistance
         if self.sensor.record_resistance:
-            self.read_resistance_button.setStyleSheet("background-color:rgb(0, 255, 0)")
+            self.read_resistance_button.setStyleSheet(
+                "background-color:rgb(0, 255, 0)")
         else:
-            self.read_resistance_button.setStyleSheet("background-color:rgb(255, 0, 0)")
+            self.read_resistance_button.setStyleSheet(
+                "background-color:rgb(255, 0, 0)")
 
     def toogle_temperature(self):
+        """ Toogle when temperature data will be obtained """
         self.sensor.record_temperature = not self.sensor.record_temperature
 
         if self.sensor.record_temperature:
-            self.read_temperature_button.setStyleSheet("background-color:rgb(0, 255, 0)")
+            self.read_temperature_button.setStyleSheet(
+                "background-color:rgb(0, 255, 0)")
         else:
-            self.read_temperature_button.setStyleSheet("background-color:rgb(255, 0, 0)")
+            self.read_temperature_button.setStyleSheet(
+                "background-color:rgb(255, 0, 0)")
 
     def toogle_pressure(self):
+        """ Toogle when pressure data will be obtained """
         self.sensor.record_pressure = not self.sensor.record_pressure
 
         if self.sensor.record_pressure:
-            self.read_pressure_button.setStyleSheet("background-color:rgb(0, 255, 0)")
+            self.read_pressure_button.setStyleSheet(
+                "background-color:rgb(0, 255, 0)")
         else:
-            self.read_pressure_button.setStyleSheet("background-color:rgb(255, 0, 0)")
+            self.read_pressure_button.setStyleSheet(
+                "background-color:rgb(255, 0, 0)")
 
     def toogle_humidity(self):
+        """ Toogle when humidity data will be obtained """
         self.sensor.record_humidity = not self.sensor.record_humidity
 
         if self.sensor.record_humidity:
-            self.read_humidity_button.setStyleSheet("background-color:rgb(0, 255, 0)")
+            self.read_humidity_button.setStyleSheet(
+                "background-color:rgb(0, 255, 0)")
         else:
-            self.read_humidity_button.setStyleSheet("background-color:rgb(255, 0, 0)")
+            self.read_humidity_button.setStyleSheet(
+                "background-color:rgb(255, 0, 0)")
 
 
 class Sensor_Manager_Widget(QWidget):
     def __init__(self):
+        """ initializing the main widget """
         super().__init__()
 
         control_panel_widget = Sensor_Control_Panel_Widget(self)

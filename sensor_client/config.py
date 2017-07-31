@@ -1,9 +1,10 @@
 import os
 import pygatt
 
+# Records the path to config.py
 DIRECTORY_OF_FILE = os.path.dirname(os.path.realpath(__file__))
 DIRECTORY_OF_SENSOR_DATA = DIRECTORY_OF_FILE + '/sensor_data/'
-
+# Creates the ADAPTER variable
 ADAPTER = None
 ADDRESS_TYPE = pygatt.BLEAddressType.random
 
